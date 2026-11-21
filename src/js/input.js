@@ -40,10 +40,15 @@ addEventListener('blur', () => {
 
 const padsEl = $('pads');
 if (COARSE.matches) padsEl.classList.add('on');
+// On a phone a long press selects text or opens a menu, and the browser then cancels the touch, so
+// a pad held for a while would let go. Nothing in the game area has a long-press action of its own.
+padsEl.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+$('play').addEventListener('contextmenu', (e) => e.preventDefault());
 padsEl.querySelectorAll('.pad').forEach((p) => {
   const k = p.dataset.k;
   const down = (e) => {
     e.preventDefault();
+    getSelection()?.removeAllRanges();
     try {
       p.setPointerCapture(e.pointerId);
     } catch (err) {}
@@ -60,7 +65,6 @@ padsEl.querySelectorAll('.pad').forEach((p) => {
   p.addEventListener('pointerup', up);
   p.addEventListener('pointercancel', up);
   p.addEventListener('lostpointercapture', up);
-  p.addEventListener('contextmenu', (e) => e.preventDefault());
 });
 
 /** The controls as the physics sees them. */

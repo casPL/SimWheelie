@@ -75,7 +75,8 @@ a { color: var(--spd); }
 .btn.go { background: var(--cone); border-color: var(--cone); color: #1a0d04; }
 
 .play { position: relative; display: flex; flex-direction: column; gap: 8px; }
-.stage { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; max-height: 70vh; min-height: 260px; background: #101316; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.top, .play, .tele { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.stage { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; max-height: 70vh; min-height: 260px; background: #101316; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; touch-action: none; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(12, 14, 16, .55); }
 .card { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; max-width: 500px; width: 100%; display: flex; flex-direction: column; gap: 9px; max-height: 100%; overflow: auto; }
@@ -93,10 +94,10 @@ a { color: var(--spd); }
 .keys { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
 kbd { font-family: var(--f-mono); font-size: 11.5px; background: var(--panel2); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; color: var(--chalk); }
 
-.pads { display: none; justify-content: space-between; gap: 8px; }
+.pads { display: none; justify-content: space-between; gap: 8px; touch-action: none; }
 .pads.on { display: flex; }
 .grp { display: flex; gap: 8px; flex: 1 1 0; }
-.pad { flex: 1 1 0; background: var(--panel2); border: 1px solid var(--rule); border-radius: 8px; min-height: 74px; font-family: var(--f-display); font-weight: 700; font-size: 15px; line-height: 1.15; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: pointer; }
+.pad { flex: 1 1 0; background: var(--panel2); border: 1px solid var(--rule); border-radius: 8px; min-height: 74px; font-family: var(--f-display); font-weight: 700; font-size: 15px; line-height: 1.15; cursor: pointer; }
 .pad.on { background: var(--chalk); color: var(--asphalt); }
 .pad.gas { border-color: var(--gas); }
 .pad.gas.on { background: var(--gas); }
@@ -997,10 +998,15 @@ addEventListener('blur', () => {
 
 const padsEl = $('pads');
 if (COARSE.matches) padsEl.classList.add('on');
+// On a phone a long press selects text or opens a menu, and the browser then cancels the touch, so
+// a pad held for a while would let go. Nothing in the game area has a long-press action of its own.
+padsEl.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+$('play').addEventListener('contextmenu', (e) => e.preventDefault());
 padsEl.querySelectorAll('.pad').forEach((p) => {
   const k = p.dataset.k;
   const down = (e) => {
     e.preventDefault();
+    getSelection()?.removeAllRanges();
     try {
       p.setPointerCapture(e.pointerId);
     } catch (err) {}
@@ -1017,7 +1023,6 @@ padsEl.querySelectorAll('.pad').forEach((p) => {
   p.addEventListener('pointerup', up);
   p.addEventListener('pointercancel', up);
   p.addEventListener('lostpointercapture', up);
-  p.addEventListener('contextmenu', (e) => e.preventDefault());
 });
 
 /** The controls as the physics sees them. */
@@ -2211,7 +2216,7 @@ function drawHud(w, h, bp, narrow) {
   const R = (narrow ? 62 : 74) * u;
   const pad = 14 * u;
   const bx = w - R - 2 * pad - 10;
-  panel(bx, 10, R + 2 * pad, R + 2 * pad + 26 * u);
+  panel(bx, 10, R + 2 * pad, R + 2 * pad + 32 * u);
   const cx = bx + pad,
     cy = 10 + pad + R;
   const onArc = (a, r) => [cx + Math.cos(a) * r, cy - Math.sin(a) * r];
@@ -2271,10 +2276,9 @@ function drawHud(w, h, bp, narrow) {
   ctx.font = disp(22);
   ctx.fillStyle = COL.chalk;
   ctx.fillText(fmt(deg(S.th), 0) + '°', cx, cy + 24 * u);
-  ctx.textAlign = 'right';
   ctx.font = mono(11, 600);
   ctx.fillStyle = zoneCol;
-  ctx.fillText('BP ' + Math.round(deg(bp)) + '°', cx + R + 4 * u, cy + 22 * u);
+  ctx.fillText('BP ' + Math.round(deg(bp)) + '°', cx, cy + 37 * u);
 
   const bw = 92 * u,
     lab = 62 * u,

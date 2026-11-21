@@ -42,7 +42,7 @@ function drawHud(w, h, bp, narrow) {
   const R = (narrow ? 62 : 74) * u;
   const pad = 14 * u;
   const bx = w - R - 2 * pad - 10;
-  panel(bx, 10, R + 2 * pad, R + 2 * pad + 26 * u);
+  panel(bx, 10, R + 2 * pad, R + 2 * pad + 32 * u);
   const cx = bx + pad,
     cy = 10 + pad + R;
   const onArc = (a, r) => [cx + Math.cos(a) * r, cy - Math.sin(a) * r];
@@ -102,10 +102,9 @@ function drawHud(w, h, bp, narrow) {
   ctx.font = disp(22);
   ctx.fillStyle = COL.chalk;
   ctx.fillText(fmt(deg(S.th), 0) + '°', cx, cy + 24 * u);
-  ctx.textAlign = 'right';
   ctx.font = mono(11, 600);
   ctx.fillStyle = zoneCol;
-  ctx.fillText('BP ' + Math.round(deg(bp)) + '°', cx + R + 4 * u, cy + 22 * u);
+  ctx.fillText('BP ' + Math.round(deg(bp)) + '°', cx, cy + 37 * u);
 
   const bw = 92 * u,
     lab = 62 * u,
