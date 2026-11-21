@@ -1,0 +1,86 @@
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>SimWheelie</h1><span class="sub">trening balance pointu</span><a class="sib" data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: symulator przejazdu GP8 w motogymkhanie">SimGP8 →</a></div>
+    <div class="hset">
+      <div class="hg"><span class="k">Motocykl</span><div class="seg" id="bikes" role="group" aria-label="Motocykl"></div></div>
+      <div class="hg"><span class="k">Tempo</span><div class="seg" id="tempo" role="group" aria-label="Tempo"><button data-v="1">100%</button><button data-v="0.75">75%</button><button data-v="0.5">50%</button><button data-v="0.35">35%</button></div></div>
+      <div class="hg"><span class="k">Podgląd</span><div class="seg" id="view" role="group" aria-label="Podgląd"><button data-v="cog">Środek ciężkości</button><button data-v="trend">Trend</button><button data-v="sound">Dźwięk</button></div></div>
+    </div>
+  </header>
+
+  <div class="play" id="play">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Widok z boku: motocykl na tylnym kole, wskaźnik kąta i balance pointu"></canvas>
+      <div class="overlay" id="overlay"></div>
+    </div>
+    <div class="pads" id="pads">
+      <div class="grp"><button class="pad" data-k="back">◀ Ciało<br>do tyłu</button><button class="pad" data-k="fwd">Ciało<br>do przodu ▶</button></div>
+      <div class="grp"><button class="pad brk" data-k="brake">Tylny<br>hamulec</button><button class="pad gas" data-k="gas">Gaz</button></div>
+    </div>
+  </div>
+
+  <section class="tele" aria-label="Telemetria">
+    <div class="head">
+      <h3>Telemetria</h3>
+      <span class="lg"><i style="background:var(--chalk)"></i>kąt motocykla</span>
+      <span class="lg"><i style="background:var(--ok)"></i>balance point</span>
+      <span class="lg"><i style="background:var(--gas)"></i>gaz</span>
+      <span class="lg"><i style="background:var(--rear)"></i>tylny hamulec</span>
+      <span class="lg"><i style="background:var(--spd)"></i>ciało (wyżej: do przodu)</span>
+    </div>
+    <div class="telebox"><canvas id="tele" aria-label="Wykres kąta, gazu, hamulca i pozycji ciała z ostatnich 12 sekund"></canvas></div>
+  </section>
+
+  <div class="info">
+    <section>
+      <h3>Sterowanie</h3>
+      <ul>
+        <li><kbd>↑</kbd> lub <kbd>W</kbd>: gaz. Manetka otwiera się, póki trzymasz klawisz, i szybko zamyka, gdy go puścisz.</li>
+        <li><kbd>↓</kbd> lub <kbd>S</kbd>: tylny hamulec.</li>
+        <li><kbd>←</kbd> <kbd>→</kbd> lub <kbd>A</kbd> <kbd>D</kbd>: ciało do tyłu i do przodu na siedzeniu.</li>
+        <li><kbd>Spacja</kbd>: start i kolejna próba. <kbd>P</kbd>: pauza.</li>
+        <li>Próba zaczyna się, gdy przód wstanie ponad 20° (biała kreska na wskaźniku kąta). Niższe podskoki nie kończą gry, więc można się nimi rozpędzać i pompować przód.</li>
+        <li>Przycierki tyłem są dozwolone. Gdy ogon trze o asfalt, lecą iskry, a licznik dystansu stoi. Próba kończy się dopiero, gdy motocykl przewróci się przez ogon albo stanie na nim bez prędkości.</li>
+        <li>Kółko na wskaźniku kąta pokazuje, gdzie będzie motocykl za ćwierć sekundy.</li>
+        <li>Na telefonie przyciski są pod obrazem, a w poziomie na obrazie.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Czym jest balance point</h3>
+      <p>To kąt, przy którym <b>środek ciężkości motocykla z kierowcą jest dokładnie nad osią tylnego koła</b>, czyli nad miejscem, gdzie opona dotyka asfaltu. Grawitacja nie przewraca wtedy motocykla ani do przodu, ani do tyłu, więc gaz jest potrzebny tylko na opory jazdy.</p>
+      <p><b>Poniżej BP</b> przód opada i trzymasz go przyspieszaniem. <b>Powyżej BP</b> motocykl przewraca się do tyłu, a ratuje go tylny hamulec: zwalnia tylne koło i bezwładność ściąga przód w dół.</p>
+    </section>
+    <section class="bp-demo">
+      <h3>Policz balance point</h3>
+      <canvas id="bpc" aria-label="Schemat: środek ciężkości nad osią tylnego koła przy balance poincie"></canvas>
+      <input type="range" id="bpr" min="-1" max="1" step="0.05" value="0" aria-label="Pozycja ciała na siedzeniu">
+      <div class="row"><span>ciało do tyłu</span><span id="bpv">BP</span><span>do przodu</span></div>
+      <p>BP = arctg(b / (h − r)), gdzie <b>b</b> to odległość środka ciężkości przed osią tylnego koła, <b>h</b> jego wysokość nad asfaltem, a <b>r</b> promień tylnego koła. Motocykl obraca się wokół osi koła, bo opona toczy się po asfalcie.</p>
+    </section>
+    <section>
+      <h3>Ruch ciała</h3>
+      <p><b>Ciało do tyłu</b> przesuwa środek ciężkości do tyłu, więc BP wypada przy mniejszym kącie, a przód łatwiej poderwać z ziemi. <b>Ciało do przodu</b> przesuwa BP wyżej.</p>
+      <p>Sam ruch działa też jak pchnięcie kierownicy. Przesuwając się do tyłu, na chwilę obracasz motocykl przodem w dół, a przyciągając się do kierownicy, podnosisz przód. Na lekkim motocyklu ten efekt jest dużo silniejszy niż na ciężkim.</p>
+    </section>
+    <section>
+      <h3>Pompowanie przodu</h3>
+      <p>Jedź powoli i krótko przyhamuj <b>tylnym hamulcem</b>. Przy hamowaniu ciężar przenosi się na przód, więc widelec się ugina, a przód nurkuje. Puść hamulec i od razu otwórz gaz z ciałem do tyłu, wtedy sprężyna widelca pomaga wybić przód w górę.</p>
+      <p>Przód wstaje wtedy z trochę mniejszym gazem, a ponieważ hamowanie najpierw zwalnia motocykl, do <b>balance pointu</b> dochodzisz wolniej. Najlepiej działa to na lekkich motocyklach z miękkim widelcem. Sportowy motocykl ma sztywne zawieszenie i zyskuje niewiele.</p>
+    </section>
+    <section>
+      <h3>Dlaczego to takie trudne</h3>
+      <p>Wheelie to <b>odwrócone wahadło</b>. <span id="dblTxt"></span> Dlatego korekty muszą być małe i wczesne, a stopa ma leżeć na hamulcu przez cały czas.</p>
+      <p>W prawdziwej jeździe czujesz ruch motocykla ciałem i reagujesz szybciej niż na obraz z ekranu. Tempo 50% i 35% spowalnia czas, a fizyka zostaje ta sama. Rekordy zapisują się osobno dla każdego tempa.</p>
+    </section>
+    <section>
+      <h3 id="specTitle">Dane motocykla</h3>
+      <table class="spec" id="spec"></table>
+    </section>
+  </div>
+
+  <footer>
+    <p>SimWheelie © 2026 Maciej Kasprzyk · Instagram <a href="https://www.instagram.com/cas8pl/" target="_blank" rel="noopener">@cas8pl</a></p>
+    <p>Wolne oprogramowanie na licencji <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU GPL</a> w wersji 3 lub nowszej. Bez żadnej gwarancji. Kod źródłowy: <a href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener">github.com/casPL/SimWheelie</a>.</p>
+    <p>Zobacz też <a data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener">SimGP8: symulator przejazdu GP8 w motogymkhanie</a>. Dane motocykli i wygląd pochodzą właśnie stamtąd.</p>
+  </footer>
+</div>
