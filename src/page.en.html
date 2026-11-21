@@ -1,0 +1,86 @@
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>SimWheelie</h1><span class="sub">balance point trainer</span><a class="sib" data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: a GP8 motogymkhana simulator">SimGP8 →</a><a class="sib" data-lang href="simwheelie-pl.html" hreflang="pl" title="Polski">PL</a></div>
+    <div class="hset">
+      <div class="hg"><span class="k">Bike</span><div class="seg" id="bikes" role="group" aria-label="Bike"></div></div>
+      <div class="hg"><span class="k">Game speed</span><div class="seg" id="tempo" role="group" aria-label="Game speed"><button data-v="1">100%</button><button data-v="0.75">75%</button><button data-v="0.5">50%</button><button data-v="0.35">35%</button></div></div>
+      <div class="hg"><span class="k">Show</span><div class="seg" id="view" role="group" aria-label="Show"><button data-v="cog">Centre of gravity</button><button data-v="trend">Trend</button><button data-v="sound">Sound</button></div></div>
+    </div>
+  </header>
+
+  <div class="play" id="play">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Side view: the bike on its back wheel, with the pitch gauge and the balance point"></canvas>
+      <div class="overlay" id="overlay"></div>
+    </div>
+    <div class="pads" id="pads">
+      <div class="grp"><button class="pad" data-k="back">◀ Body<br>back</button><button class="pad" data-k="fwd">Body<br>forward ▶</button></div>
+      <div class="grp"><button class="pad brk" data-k="brake">Rear<br>brake</button><button class="pad gas" data-k="gas">Gas</button></div>
+    </div>
+  </div>
+
+  <section class="tele" aria-label="Telemetry">
+    <div class="head">
+      <h3>Telemetry</h3>
+      <span class="lg"><i style="background:var(--chalk)"></i>bike pitch</span>
+      <span class="lg"><i style="background:var(--ok)"></i>balance point</span>
+      <span class="lg"><i style="background:var(--gas)"></i>throttle</span>
+      <span class="lg"><i style="background:var(--rear)"></i>rear brake</span>
+      <span class="lg"><i style="background:var(--spd)"></i>body (up: forward)</span>
+    </div>
+    <div class="telebox"><canvas id="tele" aria-label="Chart of the pitch, throttle, brake and body position over the last 12 seconds"></canvas></div>
+  </section>
+
+  <div class="info">
+    <section>
+      <h3>Controls</h3>
+      <ul>
+        <li><kbd>↑</kbd> or <kbd>W</kbd>: throttle. It opens while you hold the key and closes quickly when you let go.</li>
+        <li><kbd>↓</kbd> or <kbd>S</kbd>: rear brake.</li>
+        <li><kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd>: body back and forward on the seat.</li>
+        <li><kbd>Space</kbd>: start and next attempt. <kbd>P</kbd>: pause.</li>
+        <li>An attempt starts when the front rises past 20° (the white mark on the pitch gauge). Lower hops do not end the game, so you can use them to pick up speed and pump the front.</li>
+        <li>Tail scrapes are allowed. While the tail scrapes the asphalt, sparks fly and the distance counter stops. The attempt only ends when the bike goes over the tail or comes to a stop sitting on it.</li>
+        <li>The ring on the pitch gauge shows where the bike will be a quarter of a second from now.</li>
+        <li>On a phone the buttons sit below the picture, and on top of it in landscape.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>What the balance point is</h3>
+      <p>It is the pitch at which <b>the centre of gravity of the bike and rider is right above the rear axle</b>, and so above the point where the tyre touches the asphalt. Gravity then tips the bike neither forward nor back, so throttle is only needed against air drag and rolling resistance.</p>
+      <p><b>Below the BP</b> the front drops, and you hold it up by accelerating. <b>Past the BP</b> the bike falls over backwards, and the rear brake saves it: it slows the rear wheel, and inertia pulls the front down.</p>
+    </section>
+    <section class="bp-demo">
+      <h3>Work out the balance point</h3>
+      <canvas id="bpc" aria-label="Diagram: the centre of gravity above the rear axle at the balance point"></canvas>
+      <input type="range" id="bpr" min="-1" max="1" step="0.05" value="0" aria-label="Body position on the seat">
+      <div class="row"><span>body back</span><span id="bpv">BP</span><span>forward</span></div>
+      <p>BP = arctan(b / (h − r)), where <b>b</b> is how far the centre of gravity is ahead of the rear axle, <b>h</b> its height above the asphalt and <b>r</b> the rear wheel radius. The bike pivots about the wheel axle because the tyre rolls on the asphalt.</p>
+    </section>
+    <section>
+      <h3>Moving your body</h3>
+      <p><b>Body back</b> moves the centre of gravity back, so the BP comes at a smaller angle and the front is easier to lift. <b>Body forward</b> moves the BP higher.</p>
+      <p>The movement itself also works like a push on the handlebar. Sliding back briefly pitches the front down, and pulling yourself towards the handlebar lifts it. On a light bike this effect is much stronger than on a heavy one.</p>
+    </section>
+    <section>
+      <h3>Pumping the front</h3>
+      <p>Ride slowly and dab the <b>rear brake</b>. Braking moves weight onto the front, so the fork compresses and the front dives. Release the brake and open the throttle at once with your body back: the fork spring then helps to pop the front up.</p>
+      <p>The front then comes up with a little less throttle, and since braking slows the bike first, you reach the <b>balance point</b> at a lower speed. It works best on light bikes with soft forks. A sports bike has stiff suspension and gains little.</p>
+    </section>
+    <section>
+      <h3>Why it is so hard</h3>
+      <p>A wheelie is an <b>inverted pendulum</b>. <span id="dblTxt"></span> That is why corrections have to be small and early, and your foot has to stay on the brake the whole time.</p>
+      <p>On a real bike you feel its movement with your body and react faster than to a picture on a screen. Game speed 50% and 35% slows time down and leaves the physics as it is. Records are kept separately for each game speed.</p>
+    </section>
+    <section>
+      <h3 id="specTitle">Bike data</h3>
+      <table class="spec" id="spec"></table>
+    </section>
+  </div>
+
+  <footer>
+    <p>SimWheelie © 2026 Maciej Kasprzyk · Instagram <a href="https://www.instagram.com/cas8pl/" target="_blank" rel="noopener">@cas8pl</a></p>
+    <p>Free software under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU GPL</a>, version 3 or later. No warranty. Source code: <a href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener">github.com/casPL/SimWheelie</a>.</p>
+    <p>See also <a data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener">SimGP8: a GP8 motogymkhana simulator</a>. The bike data and the look come from there.</p>
+  </footer>
+</div>

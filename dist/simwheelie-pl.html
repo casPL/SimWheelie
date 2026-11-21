@@ -155,7 +155,7 @@ footer p { margin: 0 0 4px; }
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1>SimWheelie</h1><span class="sub">trening balance pointu</span><a class="sib" data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: symulator przejazdu GP8 w motogymkhanie">SimGP8 →</a></div>
+    <div class="brand"><h1>SimWheelie</h1><span class="sub">trening balance pointu</span><a class="sib" data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: symulator przejazdu GP8 w motogymkhanie">SimGP8 →</a><a class="sib" data-lang href="simwheelie-en.html" hreflang="en" title="English">EN</a></div>
     <div class="hset">
       <div class="hg"><span class="k">Motocykl</span><div class="seg" id="bikes" role="group" aria-label="Motocykl"></div></div>
       <div class="hg"><span class="k">Tempo</span><div class="seg" id="tempo" role="group" aria-label="Tempo"><button data-v="1">100%</button><button data-v="0.75">75%</button><button data-v="0.5">50%</button><button data-v="0.35">35%</button></div></div>
@@ -242,6 +242,9 @@ footer p { margin: 0 0 4px; }
 <script>
 (() => {
 'use strict';
+
+const LANG = 'pl';
+const DICT = null;
 
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Maciej Kasprzyk
@@ -646,11 +649,34 @@ function step(s, bk, road, inp) {
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Maciej Kasprzyk
 //
+// Interface language. Polish is the source language: user-visible strings stay in the code as
+// templates tagged with i18n. For another edition the build defines DICT, which maps every Polish
+// template (with {} standing for each placeholder) to its translation; LANG is the edition's language.
+
+const DECIMAL = LANG === 'pl' ? ',' : '.';
+
+const translated = new WeakMap();
+
+function i18n(strings, ...values) {
+  let parts = translated.get(strings);
+  if (!parts) {
+    const source = strings.join('{}');
+    parts = (DICT?.[source] ?? source).split('{}');
+    translated.set(strings, parts);
+  }
+  let text = parts[0];
+  for (let i = 1; i < parts.length; i++) text += values[i - 1] + parts[i];
+  return text;
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
 // Interface state, settings, colours and fonts taken from the stylesheet, and the link to SimGP8.
 
 const $ = (id) => document.getElementById(id);
 const deg = (r) => (r * 180) / Math.PI;
-const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',').replace('-', '−');
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', DECIMAL).replace('-', '−');
 const pct = (t) => Math.round(t * 100) + '%';
 const store = {
   get(k, def) {
@@ -721,14 +747,22 @@ function invalidate() {
   teleDirty = true;
 }
 
-// On secpro.pl both games live under the same key, /simwheelie/<key>/ and /simgp8/<key>/.
+// On secpro.pl both games live under the same key, /simwheelie/<key>/ and /simgp8/<key>/, with the
+// English editions in en/ below them. Elsewhere the other language is the file next to this one, as
+// in dist/; where there is none, the language link is hidden.
 const secpro = /^(.*)\/simwheelie\/([0-9a-f]{32})\//i.exec(location.pathname);
-if (secpro)
+if (secpro) {
+  const [, root, key] = secpro;
+  const en = (yes) => (yes ? 'en/' : '');
   document.querySelectorAll('a[data-sibling]').forEach((a) => {
-    a.href = `${secpro[1]}/simgp8/${secpro[2]}/`;
+    a.href = `${root}/simgp8/${key}/${en(LANG === 'en')}`;
     a.removeAttribute('target');
     a.removeAttribute('rel');
   });
+  document.querySelectorAll('a[data-lang]').forEach((a) => (a.href = `${root}/simwheelie/${key}/${en(LANG !== 'en')}`));
+} else if (!/\/simwheelie-(pl|en)\.html$/.test(location.pathname)) {
+  document.querySelectorAll('a[data-lang]').forEach((a) => (a.hidden = true));
+}
 
 function segmented(el, val, onPick) {
   el.querySelectorAll('button').forEach((b) => {
@@ -778,24 +812,27 @@ function bikeInfo() {
   const c = prep(bike);
   const bp = (b) => Math.round(deg(balancePoint(bike, b)));
   $('dblTxt').textContent =
-    `Na motocyklu ${bike.name} odchylenie od BP rośnie dwukrotnie mniej więcej co ${fmt(doubling(bike), 2)} s, jeśli nic nie zrobisz.`;
-  $('specTitle').textContent = 'Dane: ' + bike.name;
+    i18n`Na motocyklu ${bike.name} odchylenie od BP rośnie dwukrotnie mniej więcej co ${fmt(doubling(bike), 2)} s, jeśli nic nie zrobisz.`;
+  $('specTitle').textContent = i18n`Dane: ${bike.name}`;
   const rows = [
-    ['Masa z kierowcą', `${c.M} kg`],
-    ['Rozstaw osi', `${fmt(bike.L, 2)} m`],
-    ['Środek ciężkości: przed tylną osią / nad asfaltem', `${Math.round(c.b0 * 100)} / ${Math.round(bike.h * 100)} cm`],
-    ['Promień tylnego koła', `${Math.round(bike.rr * 100)} cm`],
-    ['Balance point: ciało w środku / z tyłu / z przodu', `${bp(0)}° / ${bp(-1)}° / ${bp(1)}°`],
-    ['Ogon dotyka asfaltu od', `${Math.round(deg(c.tail))}°`],
-    ['Moc', `${bike.P} kW`],
-    ['Najmocniejsze przyspieszenie na niskiej prędkości', `${fmt(bike.aMax)} m/s²`],
+    [i18n`Masa z kierowcą`, `${c.M} kg`],
+    [i18n`Rozstaw osi`, `${fmt(bike.L, 2)} m`],
     [
-      'Przód rusza z ziemi od przyspieszenia (ciało w środku / z tyłu)',
+      i18n`Środek ciężkości: przed tylną osią / nad asfaltem`,
+      `${Math.round(c.b0 * 100)} / ${Math.round(bike.h * 100)} cm`,
+    ],
+    [i18n`Promień tylnego koła`, `${Math.round(bike.rr * 100)} cm`],
+    [i18n`Balance point: ciało w środku / z tyłu / z przodu`, `${bp(0)}° / ${bp(-1)}° / ${bp(1)}°`],
+    [i18n`Ogon dotyka asfaltu od`, `${Math.round(deg(c.tail))}°`],
+    [i18n`Moc`, `${bike.P} kW`],
+    [i18n`Najmocniejsze przyspieszenie na niskiej prędkości`, `${fmt(bike.aMax)} m/s²`],
+    [
+      i18n`Przód rusza z ziemi od przyspieszenia (ciało w środku / z tyłu)`,
       `${fmt(liftLimit(bike, 0))} / ${fmt(liftLimit(bike, -1))} m/s²`,
     ],
-    ['Najmocniejszy tylny hamulec na kole', `${fmt(bike.brk)} m/s²`],
-    ['Widelec od ugięcia pod ciężarem do pełnego wybicia', `${Math.round(bike.ext * 100)} cm`],
-    ['Przesunięcie ciała na siedzeniu', `±${Math.round(bike.dx * 100)} cm`],
+    [i18n`Najmocniejszy tylny hamulec na kole`, `${fmt(bike.brk)} m/s²`],
+    [i18n`Widelec od ugięcia pod ciężarem do pełnego wybicia`, `${Math.round(bike.ext * 100)} cm`],
+    [i18n`Przesunięcie ciała na siedzeniu`, `±${Math.round(bike.dx * 100)} cm`],
   ];
   $('spec').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   drawBpDemo();
@@ -830,42 +867,42 @@ function showReady() {
   $('overlay').hidden = false;
   $('overlay').innerHTML = `<div class="card">
     <h2>${bike.name}</h2>
-    <p class="meta">BP ${Math.round(deg(balancePoint(bike, 0)))}° · tempo ${pct(cfg.tempo)}${rec ? ` · rekord ${fmt(rec)} m` : ''}</p>
-    <p>Rozpędź się i poderwij przód gazem z ciałem do tyłu, a potem trzymaj motocykl jak najbliżej <b>balance pointu</b>. Próba zaczyna się, gdy przód wstanie ponad ${LIFT_DEG}°, a wcześniejsze podskoki nie kończą gry. Wynikiem jest dystans na tylnym kole. Próba kończy się, gdy przód dotknie asfaltu albo motocykl przewróci się do tyłu. Przycierki tyłem są dozwolone, ale ten odcinek nie wlicza się do dystansu.</p>
-    ${weak ? '<p class="hint">Na samym gazie przód tego motocykla ledwo rusza. Przesuń ciało do tyłu albo napompuj przód: krótko przyhamuj tyłem i od razu dodaj gazu.</p>' : ''}
-    <p class="keys"><kbd>↑</kbd> gaz · <kbd>↓</kbd> tylny hamulec · <kbd>←</kbd> <kbd>→</kbd> ciało</p>
-    <p>${cfg.tempo < 1 ? `Tempo ${pct(cfg.tempo)}: czas płynie wolniej, fizyka zostaje ta sama. ` : ''}100% to czas rzeczywisty.</p>
-    <button class="btn go" id="goBtn">Start (Spacja)</button>
+    <p class="meta">BP ${Math.round(deg(balancePoint(bike, 0)))}° · ${i18n`tempo ${pct(cfg.tempo)}`}${rec ? ' · ' + i18n`rekord ${fmt(rec)} m` : ''}</p>
+    <p>${i18n`Rozpędź się i poderwij przód gazem z ciałem do tyłu, a potem trzymaj motocykl jak najbliżej <b>balance pointu</b>. Próba zaczyna się, gdy przód wstanie ponad ${LIFT_DEG}°, a wcześniejsze podskoki nie kończą gry. Wynikiem jest dystans na tylnym kole. Próba kończy się, gdy przód dotknie asfaltu albo motocykl przewróci się do tyłu. Przycierki tyłem są dozwolone, ale ten odcinek nie wlicza się do dystansu.`}</p>
+    ${weak ? `<p class="hint">${i18n`Na samym gazie przód tego motocykla ledwo rusza. Przesuń ciało do tyłu albo napompuj przód: krótko przyhamuj tyłem i od razu dodaj gazu.`}</p>` : ''}
+    <p class="keys">${i18n`<kbd>↑</kbd> gaz · <kbd>↓</kbd> tylny hamulec · <kbd>←</kbd> <kbd>→</kbd> ciało`}</p>
+    <p>${cfg.tempo < 1 ? i18n`Tempo ${pct(cfg.tempo)}: czas płynie wolniej, fizyka zostaje ta sama.` + ' ' : ''}${i18n`100% to czas rzeczywisty.`}</p>
+    <button class="btn go" id="goBtn">${i18n`Start (Spacja)`}</button>
   </div>`;
   $('goBtn').addEventListener('click', start);
 }
 
 function tipFor(r) {
   if (r.reason === 'late')
-    return 'Przesuń ciało do tyłu i otwórz gaz do końca. Gdy przód ruszy w górę, od razu przymykaj manetkę, zanim dojdzie do balance pointu. Możesz też napompować przód: krótko przyhamuj tyłem, puść hamulec i od razu dodaj gazu.';
+    return i18n`Przesuń ciało do tyłu i otwórz gaz do końca. Gdy przód ruszy w górę, od razu przymykaj manetkę, zanim dojdzie do balance pointu. Możesz też napompować przód: krótko przyhamuj tyłem, puść hamulec i od razu dodaj gazu.`;
   if (r.reason === 'loop') {
     if (r.brk < 0.3)
-      return 'Ogon uderzył w asfalt za szybko i motocykl przewrócił się przez niego, a tylny hamulec prawie nie pracował. Trzymaj stopę na hamulcu i naciśnij go, zanim przód przejdzie przez BP. Wtedy ogon najwyżej przyciera.';
-    return 'Hamulec przyszedł za późno i ogon uderzył w asfalt za szybko. Za balance pointem środek ciężkości jest tuż przed ogonem, więc mocne uderzenie przerzuca motocykl. Naciśnij hamulec wcześniej, wtedy ogon tylko przyciera.';
+      return i18n`Ogon uderzył w asfalt za szybko i motocykl przewrócił się przez niego, a tylny hamulec prawie nie pracował. Trzymaj stopę na hamulcu i naciśnij go, zanim przód przejdzie przez BP. Wtedy ogon najwyżej przyciera.`;
+    return i18n`Hamulec przyszedł za późno i ogon uderzył w asfalt za szybko. Za balance pointem środek ciężkości jest tuż przed ogonem, więc mocne uderzenie przerzuca motocykl. Naciśnij hamulec wcześniej, wtedy ogon tylko przyciera.`;
   }
   if (r.reason === 'tail')
-    return 'Motocykl usiadł na ogonie i stracił prędkość. Gdy ogon dotknie asfaltu, od razu naciśnij tylny hamulec i przesuń ciało do przodu, póki jeszcze jedziesz. Hamowanie ściąga przód w dół i zdejmuje motocykl z ogona.';
+    return i18n`Motocykl usiadł na ogonie i stracił prędkość. Gdy ogon dotknie asfaltu, od razu naciśnij tylny hamulec i przesuń ciało do przodu, póki jeszcze jedziesz. Hamowanie ściąga przód w dół i zdejmuje motocykl z ogona.`;
   if (r.meanDev < -8)
-    return `Przód był średnio ${fmt(-r.meanDev, 0)}° pod balance pointem. Tak nisko przód trzyma się tylko na przyspieszaniu, a ono kiedyś się kończy. Podnieś przód bliżej BP, wtedy wystarczy odrobina gazu.`;
+    return i18n`Przód był średnio ${fmt(-r.meanDev, 0)}° pod balance pointem. Tak nisko przód trzyma się tylko na przyspieszaniu, a ono kiedyś się kończy. Podnieś przód bliżej BP, wtedy wystarczy odrobina gazu.`;
   if (r.brkAtEnd > 0.3)
-    return 'Przód spadł przy wciśniętym hamulcu. Po korekcie hamulcem od razu go puść i dodaj trochę gazu.';
+    return i18n`Przód spadł przy wciśniętym hamulcu. Po korekcie hamulcem od razu go puść i dodaj trochę gazu.`;
   if (r.vMax * 3.6 > 70)
-    return 'Prędkość rosła, aż zabrakło mocy na trzymanie przodu. Bliżej BP gazu potrzeba mało i prędkość przestaje rosnąć.';
+    return i18n`Prędkość rosła, aż zabrakło mocy na trzymanie przodu. Bliżej BP gazu potrzeba mało i prędkość przestaje rosnąć.`;
   if (r.bpPct >= 40)
-    return 'Dobrze trzymasz okolice BP. Teraz pracuj nad mniejszymi ruchami manetką: krótko i mało zamiast pełnych otwarć.';
-  return 'Przód spadł, bo zabrakło gazu. Gdy przód zaczyna opadać, dodaj gazu od razu, zanim spadnie o kilka stopni.';
+    return i18n`Dobrze trzymasz okolice BP. Teraz pracuj nad mniejszymi ruchami manetką: krótko i mało zamiast pełnych otwarć.`;
+  return i18n`Przód spadł, bo zabrakło gazu. Gdy przód zaczyna opadać, dodaj gazu od razu, zanim spadnie o kilka stopni.`;
 }
 
 const END_TITLE = {
-  loop: 'Przewrotka przez ogon',
-  tail: 'Motocykl utknął na ogonie',
-  down: 'Przód na ziemi',
-  late: 'Przód nie poszedł w górę',
+  loop: i18n`Przewrotka przez ogon`,
+  tail: i18n`Motocykl utknął na ogonie`,
+  down: i18n`Przód na ziemi`,
+  late: i18n`Przód nie poszedł w górę`,
 };
 
 function finish() {
@@ -898,21 +935,22 @@ function finish() {
   }
   const hard =
     r.reason === 'down' && r.impact > 2.5
-      ? '<p>Przód spadł twardo. W realu takie lądowanie męczy widelec i wybija z rytmu.</p>'
+      ? `<p>${i18n`Przód spadł twardo. W realu takie lądowanie męczy widelec i wybija z rytmu.`}</p>`
       : '';
+  const record = best[k] ? `${fmt(best[k])} m` : '–';
   $('overlay').hidden = false;
   $('overlay').innerHTML = `<div class="card">
     <h2>${END_TITLE[r.reason]}</h2>
     <div class="stats">
-      <div class="stat"><div class="k">Dystans</div><div class="v${isRec ? ' rec' : ''}">${fmt(r.dist)} m</div></div>
-      <div class="stat"><div class="k">Czas</div><div class="v">${fmt(r.time)} s</div></div>
-      <div class="stat"><div class="k">Strefa BP</div><div class="v">${fmt(r.bpPct, 0)}%</div></div>
+      <div class="stat"><div class="k">${i18n`Dystans`}</div><div class="v${isRec ? ' rec' : ''}">${fmt(r.dist)} m</div></div>
+      <div class="stat"><div class="k">${i18n`Czas`}</div><div class="v">${fmt(r.time)} s</div></div>
+      <div class="stat"><div class="k">${i18n`Strefa BP`}</div><div class="v">${fmt(r.bpPct, 0)}%</div></div>
     </div>
-    <p class="meta">maks. ${fmt(deg(r.maxTh), 0)}° · maks. ${fmt(r.vMax * 3.6, 0)} km/h · rekord ${best[k] ? fmt(best[k]) + ' m' : '–'} · tempo ${pct(cfg.tempo)}</p>
-    ${isRec ? '<p><b>Nowy rekord.</b></p>' : ''}
+    <p class="meta">${i18n`maks. ${fmt(deg(r.maxTh), 0)}° · maks. ${fmt(r.vMax * 3.6, 0)} km/h · rekord ${record} · tempo ${pct(cfg.tempo)}`}</p>
+    ${isRec ? `<p><b>${i18n`Nowy rekord.`}</b></p>` : ''}
     <p class="tip">${tipFor(r)}</p>
     ${hard}
-    <button class="btn go" id="goBtn">Jeszcze raz (Spacja)</button>
+    <button class="btn go" id="goBtn">${i18n`Jeszcze raz (Spacja)`}</button>
   </div>`;
   $('goBtn').addEventListener('click', start);
 }
@@ -2056,7 +2094,7 @@ function drawScene(dtReal) {
       ctx.setLineDash([]);
       ctx.fillStyle = COL.ok;
       ctx.font = `600 ${Math.max(11, Math.round(sc * 0.11))}px ${FONT_MONO}`;
-      ctx.fillText('rekord', rx, top - 6);
+      ctx.fillText(i18n`rekord`, rx, top - 6);
     }
   }
 
@@ -2156,7 +2194,7 @@ function drawHud(w, h, bp, narrow) {
   const scraping = phase === 'ride' && S.scrape;
   ctx.fillStyle = scraping ? '#ffb74d' : COL.muted;
   ctx.fillText(
-    scraping ? 'OGON TRZE · DYSTANS STOI' : counting ? 'NA TYLNYM KOLE' : `PODERWIJ PONAD ${LIFT_DEG}°`,
+    scraping ? i18n`OGON TRZE · DYSTANS STOI` : counting ? i18n`NA TYLNYM KOLE` : i18n`PODERWIJ PONAD ${LIFT_DEG}°`,
     20 * u,
     27 * u,
   );
@@ -2166,9 +2204,9 @@ function drawHud(w, h, bp, narrow) {
   ctx.font = mono(11.5);
   ctx.fillStyle = COL.muted;
   const zp = S.wTime > 0 ? Math.round((100 * S.bpTime) / S.wTime) : 0;
-  ctx.fillText(`${Math.round(S.v * 3.6)} km/h · strefa BP ${zp}%`, 20 * u, 78 * u);
+  ctx.fillText(i18n`${Math.round(S.v * 3.6)} km/h · strefa BP ${zp}%`, 20 * u, 78 * u);
   const rec = best[bestKey()];
-  ctx.fillText(`${rec ? 'rekord ' + fmt(rec) + ' m' : 'bez rekordu'} · ${pct(cfg.tempo)}`, 20 * u, 95 * u);
+  ctx.fillText(`${rec ? i18n`rekord ${fmt(rec)} m` : i18n`bez rekordu`} · ${pct(cfg.tempo)}`, 20 * u, 95 * u);
 
   const R = (narrow ? 62 : 74) * u;
   const pad = 14 * u;
@@ -2261,9 +2299,9 @@ function drawHud(w, h, bp, narrow) {
       ctx.fillRect(lx + lab + 10 * u + bw / 2 + (S.s * bw) / 2 - 4 * u, y - 1 * u, 8 * u, 14 * u);
     } else ctx.fillRect(lx + lab + 10 * u, y + 2 * u, bw * val, 8 * u);
   };
-  bar(0, S.thrCmd, COL.gas, 'GAZ');
-  bar(1, S.brk, COL.rear, 'HAMULEC');
-  bar(2, null, COL.dim, 'CIAŁO');
+  bar(0, S.thrCmd, COL.gas, i18n`GAZ`);
+  bar(1, S.brk, COL.rear, i18n`HAMULEC`);
+  bar(2, null, COL.dim, i18n`CIAŁO`);
 
   if (paused && phase === 'ride') {
     ctx.fillStyle = 'rgba(12,14,16,0.6)';
@@ -2271,9 +2309,9 @@ function drawHud(w, h, bp, narrow) {
     ctx.fillStyle = COL.chalk;
     ctx.textAlign = 'center';
     ctx.font = disp(30);
-    ctx.fillText('Pauza', w / 2, h / 2);
+    ctx.fillText(i18n`Pauza`, w / 2, h / 2);
     ctx.font = mono(13);
-    ctx.fillText(COARSE.matches ? 'dotknij przycisku, aby jechać dalej' : 'P: dalej', w / 2, h / 2 + 26 * u);
+    ctx.fillText(COARSE.matches ? i18n`dotknij przycisku, aby jechać dalej` : i18n`P: dalej`, w / 2, h / 2 + 26 * u);
   }
 }
 

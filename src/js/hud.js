@@ -25,7 +25,7 @@ function drawHud(w, h, bp, narrow) {
   const scraping = phase === 'ride' && S.scrape;
   ctx.fillStyle = scraping ? '#ffb74d' : COL.muted;
   ctx.fillText(
-    scraping ? 'OGON TRZE · DYSTANS STOI' : counting ? 'NA TYLNYM KOLE' : `PODERWIJ PONAD ${LIFT_DEG}°`,
+    scraping ? i18n`OGON TRZE · DYSTANS STOI` : counting ? i18n`NA TYLNYM KOLE` : i18n`PODERWIJ PONAD ${LIFT_DEG}°`,
     20 * u,
     27 * u,
   );
@@ -35,9 +35,9 @@ function drawHud(w, h, bp, narrow) {
   ctx.font = mono(11.5);
   ctx.fillStyle = COL.muted;
   const zp = S.wTime > 0 ? Math.round((100 * S.bpTime) / S.wTime) : 0;
-  ctx.fillText(`${Math.round(S.v * 3.6)} km/h · strefa BP ${zp}%`, 20 * u, 78 * u);
+  ctx.fillText(i18n`${Math.round(S.v * 3.6)} km/h · strefa BP ${zp}%`, 20 * u, 78 * u);
   const rec = best[bestKey()];
-  ctx.fillText(`${rec ? 'rekord ' + fmt(rec) + ' m' : 'bez rekordu'} · ${pct(cfg.tempo)}`, 20 * u, 95 * u);
+  ctx.fillText(`${rec ? i18n`rekord ${fmt(rec)} m` : i18n`bez rekordu`} · ${pct(cfg.tempo)}`, 20 * u, 95 * u);
 
   const R = (narrow ? 62 : 74) * u;
   const pad = 14 * u;
@@ -130,9 +130,9 @@ function drawHud(w, h, bp, narrow) {
       ctx.fillRect(lx + lab + 10 * u + bw / 2 + (S.s * bw) / 2 - 4 * u, y - 1 * u, 8 * u, 14 * u);
     } else ctx.fillRect(lx + lab + 10 * u, y + 2 * u, bw * val, 8 * u);
   };
-  bar(0, S.thrCmd, COL.gas, 'GAZ');
-  bar(1, S.brk, COL.rear, 'HAMULEC');
-  bar(2, null, COL.dim, 'CIAŁO');
+  bar(0, S.thrCmd, COL.gas, i18n`GAZ`);
+  bar(1, S.brk, COL.rear, i18n`HAMULEC`);
+  bar(2, null, COL.dim, i18n`CIAŁO`);
 
   if (paused && phase === 'ride') {
     ctx.fillStyle = 'rgba(12,14,16,0.6)';
@@ -140,8 +140,8 @@ function drawHud(w, h, bp, narrow) {
     ctx.fillStyle = COL.chalk;
     ctx.textAlign = 'center';
     ctx.font = disp(30);
-    ctx.fillText('Pauza', w / 2, h / 2);
+    ctx.fillText(i18n`Pauza`, w / 2, h / 2);
     ctx.font = mono(13);
-    ctx.fillText(COARSE.matches ? 'dotknij przycisku, aby jechać dalej' : 'P: dalej', w / 2, h / 2 + 26 * u);
+    ctx.fillText(COARSE.matches ? i18n`dotknij przycisku, aby jechać dalej` : i18n`P: dalej`, w / 2, h / 2 + 26 * u);
   }
 }

@@ -253,7 +253,7 @@ function drawScene(dtReal) {
       ctx.setLineDash([]);
       ctx.fillStyle = COL.ok;
       ctx.font = `600 ${Math.max(11, Math.round(sc * 0.11))}px ${FONT_MONO}`;
-      ctx.fillText('rekord', rx, top - 6);
+      ctx.fillText(i18n`rekord`, rx, top - 6);
     }
   }
 

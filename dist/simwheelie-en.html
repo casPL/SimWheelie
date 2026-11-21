@@ -1,0 +1,2523 @@
+<!doctype html>
+<!--
+  SimWheelie: a wheelie balance point trainer.
+  Copyright (C) 2026 Maciej Kasprzyk (Instagram: @cas8pl)
+
+  This program is free software: you can redistribute it and/or modify it under the terms of the
+  GNU General Public License as published by the Free Software Foundation, either version 3 of the
+  License, or (at your option) any later version. This program is distributed in the hope that it
+  will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details:
+  https://www.gnu.org/licenses/
+
+  Source code: https://github.com/casPL/SimWheelie
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SimWheelie</title>
+<meta name="description" content="SimWheelie: a wheelie balance point trainer. Motorcycle physics in the browser, five bikes, telemetry.">
+<meta name="author" content="Maciej Kasprzyk">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --asphalt: #16181a;
+  --panel: #1f2225;
+  --panel2: #282c30;
+  --rule: #373c42;
+  --chalk: #ece8dd;
+  --muted: #9ca2a8;
+  --dim: #6b7177;
+  --cone: #ff6b1a;
+  --coneN: #3d8bff;
+  --coneF: #f0443a;
+  --rear: #f48fb1;
+  --gas: #f2c14e;
+  --spd: #64a8ff;
+  --ok: #4cc46f;
+  --warn: #e9b53c;
+  --f-display: 'Chakra Petch', 'Arial Narrow', sans-serif;
+  --f-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html, body { background: var(--asphalt); color: var(--chalk); }
+body {
+  margin: 0;
+  padding-block: 12px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; margin: 0; letter-spacing: .01em; text-wrap: balance; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--cone); outline-offset: 2px; }
+a { color: var(--spd); }
+
+.wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 22px; border-bottom: 1px solid var(--rule); padding-bottom: 8px; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand h1 { font-size: clamp(24px, 3vw, 30px); line-height: 1; }
+.brand .sub { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.hset { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; }
+.hg .k { display: block; font-family: var(--f-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.seg { display: flex; flex-wrap: wrap; background: var(--panel2); border-radius: 4px; padding: 2px; gap: 2px; }
+.seg button { background: transparent; border: 0; border-radius: 3px; padding: 5px 9px; cursor: pointer; font-size: 12.5px; color: var(--muted); white-space: nowrap; flex: 1 1 auto; }
+.seg button[aria-pressed="true"] { background: var(--chalk); color: var(--asphalt); font-weight: 600; }
+.btn { background: var(--panel2); border: 1px solid var(--rule); border-radius: 4px; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.btn:hover { border-color: var(--muted); }
+.btn.go { background: var(--cone); border-color: var(--cone); color: #1a0d04; }
+
+.play { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.stage { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; max-height: 70vh; min-height: 260px; background: #101316; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(12, 14, 16, .55); }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; max-width: 500px; width: 100%; display: flex; flex-direction: column; gap: 9px; max-height: 100%; overflow: auto; }
+.card h2 { font-size: 23px; line-height: 1.15; }
+.card p { margin: 0; color: var(--muted); font-size: 14px; }
+.card p b { color: var(--chalk); }
+.card .meta { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { background: var(--panel2); border-radius: 5px; padding: 6px 9px; min-width: 0; }
+.stat .k { font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .v { font-family: var(--f-display); font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat .v.rec { color: var(--ok); }
+.tip { border-left: 3px solid var(--cone); padding: 2px 0 2px 10px; color: var(--chalk) !important; }
+.hint { color: var(--warn) !important; }
+.keys { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+kbd { font-family: var(--f-mono); font-size: 11.5px; background: var(--panel2); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; color: var(--chalk); }
+
+.pads { display: none; justify-content: space-between; gap: 8px; }
+.pads.on { display: flex; }
+.grp { display: flex; gap: 8px; flex: 1 1 0; }
+.pad { flex: 1 1 0; background: var(--panel2); border: 1px solid var(--rule); border-radius: 8px; min-height: 74px; font-family: var(--f-display); font-weight: 700; font-size: 15px; line-height: 1.15; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: pointer; }
+.pad.on { background: var(--chalk); color: var(--asphalt); }
+.pad.gas { border-color: var(--gas); }
+.pad.gas.on { background: var(--gas); }
+.pad.brk { border-color: var(--rear); }
+.pad.brk.on { background: var(--rear); }
+.pads .pad { min-width: 0; padding: 0 3px; }
+
+.tele { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.tele .head { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; font-size: 12.5px; color: var(--muted); }
+.tele .head h3 { font-size: 15px; color: var(--chalk); }
+.lg { display: inline-flex; align-items: center; gap: 5px; }
+.lg i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.telebox { position: relative; height: 130px; }
+.telebox canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.info { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); }
+.info section { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+.info h3 { font-size: 17px; margin-bottom: 6px; }
+.info p, .info li { font-size: 14px; color: var(--muted); margin: 0 0 6px; }
+.info ul { margin: 0; padding-left: 18px; }
+.info b { color: var(--chalk); }
+.bp-demo { display: flex; flex-direction: column; gap: 6px; }
+.bp-demo canvas { width: 100%; height: 190px; display: block; }
+.bp-demo input { width: 100%; accent-color: var(--cone); }
+.bp-demo .row { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.spec { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.spec td { padding: 3px 0; border-bottom: 1px solid var(--rule); color: var(--muted); vertical-align: top; }
+.spec td:last-child { text-align: right; color: var(--chalk); font-family: var(--f-mono); font-size: 12.5px; padding-left: 10px; white-space: nowrap; }
+footer { font-size: 12.5px; color: var(--dim); border-top: 1px solid var(--rule); padding-top: 10px; }
+footer p { margin: 0 0 4px; }
+
+@media (max-width: 560px) {
+  .stage { aspect-ratio: 1 / 1; max-height: 64vh; }
+  .stats .stat .v { font-size: 19px; }
+  .card { padding: 12px 14px; gap: 7px; }
+  .card h2 { font-size: 20px; }
+  .card p { font-size: 13px; }
+}
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 540px) {
+  .play { height: calc(100svh - 24px); min-height: 280px; }
+  .stage { flex: 1 1 auto; height: 100%; aspect-ratio: auto; max-height: none; min-height: 0; }
+  .pads.on { position: absolute; left: 8px; right: 8px; bottom: 8px; pointer-events: none; }
+  .pads .grp { flex: 0 0 auto; pointer-events: auto; }
+  .pads .pad { width: 86px; min-height: 66px; background: rgba(40, 44, 48, .72); font-size: 14px; }
+  .pads .pad.on { background: var(--chalk); }
+  .pads .pad.gas.on { background: var(--gas); }
+  .pads .pad.brk.on { background: var(--rear); }
+}
+@media (max-width: 380px) {
+  .pad { font-size: 13px; }
+}
+.sib { align-self: center; font-family: var(--f-mono); font-size: 12px; color: var(--chalk); text-decoration: none; border: 1px solid var(--rule); border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+.sib:hover { border-color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>SimWheelie</h1><span class="sub">balance point trainer</span><a class="sib" data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: a GP8 motogymkhana simulator">SimGP8 →</a><a class="sib" data-lang href="simwheelie-pl.html" hreflang="pl" title="Polski">PL</a></div>
+    <div class="hset">
+      <div class="hg"><span class="k">Bike</span><div class="seg" id="bikes" role="group" aria-label="Bike"></div></div>
+      <div class="hg"><span class="k">Game speed</span><div class="seg" id="tempo" role="group" aria-label="Game speed"><button data-v="1">100%</button><button data-v="0.75">75%</button><button data-v="0.5">50%</button><button data-v="0.35">35%</button></div></div>
+      <div class="hg"><span class="k">Show</span><div class="seg" id="view" role="group" aria-label="Show"><button data-v="cog">Centre of gravity</button><button data-v="trend">Trend</button><button data-v="sound">Sound</button></div></div>
+    </div>
+  </header>
+
+  <div class="play" id="play">
+    <div class="stage" id="stage">
+      <canvas id="cv" aria-label="Side view: the bike on its back wheel, with the pitch gauge and the balance point"></canvas>
+      <div class="overlay" id="overlay"></div>
+    </div>
+    <div class="pads" id="pads">
+      <div class="grp"><button class="pad" data-k="back">◀ Body<br>back</button><button class="pad" data-k="fwd">Body<br>forward ▶</button></div>
+      <div class="grp"><button class="pad brk" data-k="brake">Rear<br>brake</button><button class="pad gas" data-k="gas">Gas</button></div>
+    </div>
+  </div>
+
+  <section class="tele" aria-label="Telemetry">
+    <div class="head">
+      <h3>Telemetry</h3>
+      <span class="lg"><i style="background:var(--chalk)"></i>bike pitch</span>
+      <span class="lg"><i style="background:var(--ok)"></i>balance point</span>
+      <span class="lg"><i style="background:var(--gas)"></i>throttle</span>
+      <span class="lg"><i style="background:var(--rear)"></i>rear brake</span>
+      <span class="lg"><i style="background:var(--spd)"></i>body (up: forward)</span>
+    </div>
+    <div class="telebox"><canvas id="tele" aria-label="Chart of the pitch, throttle, brake and body position over the last 12 seconds"></canvas></div>
+  </section>
+
+  <div class="info">
+    <section>
+      <h3>Controls</h3>
+      <ul>
+        <li><kbd>↑</kbd> or <kbd>W</kbd>: throttle. It opens while you hold the key and closes quickly when you let go.</li>
+        <li><kbd>↓</kbd> or <kbd>S</kbd>: rear brake.</li>
+        <li><kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd>: body back and forward on the seat.</li>
+        <li><kbd>Space</kbd>: start and next attempt. <kbd>P</kbd>: pause.</li>
+        <li>An attempt starts when the front rises past 20° (the white mark on the pitch gauge). Lower hops do not end the game, so you can use them to pick up speed and pump the front.</li>
+        <li>Tail scrapes are allowed. While the tail scrapes the asphalt, sparks fly and the distance counter stops. The attempt only ends when the bike goes over the tail or comes to a stop sitting on it.</li>
+        <li>The ring on the pitch gauge shows where the bike will be a quarter of a second from now.</li>
+        <li>On a phone the buttons sit below the picture, and on top of it in landscape.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>What the balance point is</h3>
+      <p>It is the pitch at which <b>the centre of gravity of the bike and rider is right above the rear axle</b>, and so above the point where the tyre touches the asphalt. Gravity then tips the bike neither forward nor back, so throttle is only needed against air drag and rolling resistance.</p>
+      <p><b>Below the BP</b> the front drops, and you hold it up by accelerating. <b>Past the BP</b> the bike falls over backwards, and the rear brake saves it: it slows the rear wheel, and inertia pulls the front down.</p>
+    </section>
+    <section class="bp-demo">
+      <h3>Work out the balance point</h3>
+      <canvas id="bpc" aria-label="Diagram: the centre of gravity above the rear axle at the balance point"></canvas>
+      <input type="range" id="bpr" min="-1" max="1" step="0.05" value="0" aria-label="Body position on the seat">
+      <div class="row"><span>body back</span><span id="bpv">BP</span><span>forward</span></div>
+      <p>BP = arctan(b / (h − r)), where <b>b</b> is how far the centre of gravity is ahead of the rear axle, <b>h</b> its height above the asphalt and <b>r</b> the rear wheel radius. The bike pivots about the wheel axle because the tyre rolls on the asphalt.</p>
+    </section>
+    <section>
+      <h3>Moving your body</h3>
+      <p><b>Body back</b> moves the centre of gravity back, so the BP comes at a smaller angle and the front is easier to lift. <b>Body forward</b> moves the BP higher.</p>
+      <p>The movement itself also works like a push on the handlebar. Sliding back briefly pitches the front down, and pulling yourself towards the handlebar lifts it. On a light bike this effect is much stronger than on a heavy one.</p>
+    </section>
+    <section>
+      <h3>Pumping the front</h3>
+      <p>Ride slowly and dab the <b>rear brake</b>. Braking moves weight onto the front, so the fork compresses and the front dives. Release the brake and open the throttle at once with your body back: the fork spring then helps to pop the front up.</p>
+      <p>The front then comes up with a little less throttle, and since braking slows the bike first, you reach the <b>balance point</b> at a lower speed. It works best on light bikes with soft forks. A sports bike has stiff suspension and gains little.</p>
+    </section>
+    <section>
+      <h3>Why it is so hard</h3>
+      <p>A wheelie is an <b>inverted pendulum</b>. <span id="dblTxt"></span> That is why corrections have to be small and early, and your foot has to stay on the brake the whole time.</p>
+      <p>On a real bike you feel its movement with your body and react faster than to a picture on a screen. Game speed 50% and 35% slows time down and leaves the physics as it is. Records are kept separately for each game speed.</p>
+    </section>
+    <section>
+      <h3 id="specTitle">Bike data</h3>
+      <table class="spec" id="spec"></table>
+    </section>
+  </div>
+
+  <footer>
+    <p>SimWheelie © 2026 Maciej Kasprzyk · Instagram <a href="https://www.instagram.com/cas8pl/" target="_blank" rel="noopener">@cas8pl</a></p>
+    <p>Free software under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU GPL</a>, version 3 or later. No warranty. Source code: <a href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener">github.com/casPL/SimWheelie</a>.</p>
+    <p>See also <a data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener">SimGP8: a GP8 motogymkhana simulator</a>. The bike data and the look come from there.</p>
+  </footer>
+</div>
+<script>
+(() => {
+'use strict';
+
+const LANG = 'en';
+const DICT = {"Na motocyklu {} odchylenie od BP rośnie dwukrotnie mniej więcej co {} s, jeśli nic nie zrobisz.":"On the {} a deviation from the BP doubles roughly every {} s if you do nothing.","Dane: {}":"Bike data: {}","Masa z kierowcą":"Mass with rider","Rozstaw osi":"Wheelbase","Środek ciężkości: przed tylną osią / nad asfaltem":"Centre of gravity: ahead of the rear axle / above the asphalt","Promień tylnego koła":"Rear wheel radius","Balance point: ciało w środku / z tyłu / z przodu":"Balance point: body centred / back / forward","Ogon dotyka asfaltu od":"Tail touches the asphalt from","Moc":"Power","Najmocniejsze przyspieszenie na niskiej prędkości":"Strongest acceleration at low speed","Przód rusza z ziemi od przyspieszenia (ciało w środku / z tyłu)":"Acceleration that starts lifting the front (body centred / back)","Najmocniejszy tylny hamulec na kole":"Hardest rear braking","Widelec od ugięcia pod ciężarem do pełnego wybicia":"Fork travel from static sag to full extension","Przesunięcie ciała na siedzeniu":"Body slide on the seat","tempo {}":"game speed {}","rekord {} m":"record {} m","Rozpędź się i poderwij przód gazem z ciałem do tyłu, a potem trzymaj motocykl jak najbliżej <b>balance pointu</b>. Próba zaczyna się, gdy przód wstanie ponad {}°, a wcześniejsze podskoki nie kończą gry. Wynikiem jest dystans na tylnym kole. Próba kończy się, gdy przód dotknie asfaltu albo motocykl przewróci się do tyłu. Przycierki tyłem są dozwolone, ale ten odcinek nie wlicza się do dystansu.":"Pick up speed, lift the front with the throttle and your body back, then keep the bike as close to the <b>balance point</b> as you can. The attempt starts when the front rises past {}°, and hops before that do not end the game. Your score is the distance on the back wheel. The attempt ends when the front touches the asphalt or the bike goes over backwards. Tail scrapes are allowed, but that stretch does not count towards the distance.","Na samym gazie przód tego motocykla ledwo rusza. Przesuń ciało do tyłu albo napompuj przód: krótko przyhamuj tyłem i od razu dodaj gazu.":"On throttle alone the front of this bike barely lifts. Move your body back or pump the front: dab the rear brake, then open the throttle straight away.","<kbd>↑</kbd> gaz · <kbd>↓</kbd> tylny hamulec · <kbd>←</kbd> <kbd>→</kbd> ciało":"<kbd>↑</kbd> throttle · <kbd>↓</kbd> rear brake · <kbd>←</kbd> <kbd>→</kbd> body","Tempo {}: czas płynie wolniej, fizyka zostaje ta sama.":"Game speed {}: time runs slower, the physics stays the same.","100% to czas rzeczywisty.":"100% is real time.","Start (Spacja)":"Start (Space)","Przesuń ciało do tyłu i otwórz gaz do końca. Gdy przód ruszy w górę, od razu przymykaj manetkę, zanim dojdzie do balance pointu. Możesz też napompować przód: krótko przyhamuj tyłem, puść hamulec i od razu dodaj gazu.":"Move your body back and open the throttle all the way. As soon as the front starts to rise, begin closing the throttle, before it reaches the balance point. You can also pump the front: dab the rear brake, release it and open the throttle straight away.","Ogon uderzył w asfalt za szybko i motocykl przewrócił się przez niego, a tylny hamulec prawie nie pracował. Trzymaj stopę na hamulcu i naciśnij go, zanim przód przejdzie przez BP. Wtedy ogon najwyżej przyciera.":"The tail hit the asphalt too fast and the bike went over it, while the rear brake hardly worked. Keep your foot on the brake and press it before the front goes past the BP. Then the tail scrapes at most.","Hamulec przyszedł za późno i ogon uderzył w asfalt za szybko. Za balance pointem środek ciężkości jest tuż przed ogonem, więc mocne uderzenie przerzuca motocykl. Naciśnij hamulec wcześniej, wtedy ogon tylko przyciera.":"The brake came too late and the tail hit the asphalt too fast. Past the balance point the centre of gravity is just ahead of the tail, so a hard hit throws the bike over. Brake earlier and the tail only scrapes.","Motocykl usiadł na ogonie i stracił prędkość. Gdy ogon dotknie asfaltu, od razu naciśnij tylny hamulec i przesuń ciało do przodu, póki jeszcze jedziesz. Hamowanie ściąga przód w dół i zdejmuje motocykl z ogona.":"The bike sat down on its tail and lost its speed. When the tail touches the asphalt, press the rear brake at once and move your body forward while you are still rolling. Braking pulls the front down and takes the bike off its tail.","Przód był średnio {}° pod balance pointem. Tak nisko przód trzyma się tylko na przyspieszaniu, a ono kiedyś się kończy. Podnieś przód bliżej BP, wtedy wystarczy odrobina gazu.":"On average the front was {}° below the balance point. That low, the front only stays up while you accelerate, and sooner or later that ends. Bring the front closer to the BP, where a touch of throttle is enough.","Przód spadł przy wciśniętym hamulcu. Po korekcie hamulcem od razu go puść i dodaj trochę gazu.":"The front came down with the brake on. After a correction with the brake, release it at once and add a little throttle.","Prędkość rosła, aż zabrakło mocy na trzymanie przodu. Bliżej BP gazu potrzeba mało i prędkość przestaje rosnąć.":"The speed kept rising until there was no power left to hold the front up. Closer to the BP you need little throttle, and the speed stops rising.","Dobrze trzymasz okolice BP. Teraz pracuj nad mniejszymi ruchami manetką: krótko i mało zamiast pełnych otwarć.":"You stay near the BP well. Now work on smaller throttle movements: short and small instead of full openings.","Przód spadł, bo zabrakło gazu. Gdy przód zaczyna opadać, dodaj gazu od razu, zanim spadnie o kilka stopni.":"The front came down for lack of throttle. When the front starts to drop, add throttle at once, before it falls by a few degrees.","Przewrotka przez ogon":"Looped out over the tail","Motocykl utknął na ogonie":"Stuck on the tail","Przód na ziemi":"Front wheel down","Przód nie poszedł w górę":"The front never came up","Przód spadł twardo. W realu takie lądowanie męczy widelec i wybija z rytmu.":"The front came down hard. On a real bike a landing like that is hard on the fork and breaks your rhythm.","Dystans":"Distance","Czas":"Time","Strefa BP":"BP zone","maks. {}° · maks. {} km/h · rekord {} · tempo {}":"max {}° · max {} km/h · record {} · game speed {}","Nowy rekord.":"New record.","Jeszcze raz (Spacja)":"Again (Space)","rekord":"record","OGON TRZE · DYSTANS STOI":"TAIL SCRAPE · NOT COUNTED","NA TYLNYM KOLE":"ON THE BACK WHEEL","PODERWIJ PONAD {}°":"LIFT THE FRONT PAST {}°","{} km/h · strefa BP {}%":"{} km/h · BP zone {}%","bez rekordu":"no record","GAZ":"GAS","HAMULEC":"BRAKE","CIAŁO":"BODY","Pauza":"Paused","dotknij przycisku, aby jechać dalej":"touch a button to ride on","P: dalej":"P: resume"};
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Constants of the model. SI units throughout; the bike is seen from its right side, x forward,
+// z up, and the pitch angle th grows as the front wheel rises.
+
+const G = 9.81;
+const RIDER = 80; // rider mass [kg]
+const AIR = 0.36; // aerodynamic drag, F = AIR·v² [N]
+const ROLL = 0.012; // rolling resistance coefficient
+const DT = 1 / 240; // physics time step [s]
+const SUS_W = 2 * Math.PI * 2.2; // rear suspension over bumps: natural frequency [rad/s]
+const SUS_Z = 0.45; // and damping ratio
+const BODY_W = 9; // rider sliding on the seat: natural frequency [rad/s], critically damped
+const FORK_ZC = 0.3; // fork damping ratio in compression
+const FORK_ZR = 0.25; // and in rebound
+const LIFT_DEG = 20; // an attempt counts once the bike pitches up past this [°]
+const RUNUP = 150; // run-up allowed before the front has to come up [m]
+const TAIL_MU = 0.45; // friction of the tail scraping the asphalt
+
+const RAD = Math.PI / 180;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+/** Moves cur towards target at the rate up when rising and down when falling [1/s]. */
+function approach(cur, target, up, down, dt) {
+  return target > cur ? Math.min(target, cur + up * dt) : Math.max(target, cur - down * dt);
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The bikes and the quantities derived from their data: balance point, tail contact, fork and
+// tail stiffness.
+
+// m [kg], P [kW], L [m], h CoG with rider [m], ff front load, mu grip, rr/rw wheel radius [m], rake [°],
+// hp/ls swingarm pivot height/length [m], aMax [m/s²], brk rear brake [m/s²], eb engine braking [m/s²],
+// tau throttle lag [s], me/ms drivetrain inertia as tyre mass [kg], k2 [m²], dx seat slide [m], seat/fork/ext [m]
+// prettier-ignore
+const BIKES = [
+  {
+    id: 'ebike', name: 'Sur-Ron SM 17"', short: 'Sur-Ron', look: 'e', color: '#e33b34',
+    m: 85,  P: 21,  L: 1.38,  h: 0.72, ff: 0.48, mu: 1.15, rr: 0.3,   rw: 0.296, rake: 26, hp: 0.42, ls: 0.57,
+    aMax: 10.5, brk: 6.5, eb: 0.3, tau: 0.02, me: 6,  ms: 3.5, k2: 0.3,  dx: 0.17,
+    seat: 0.88, fork: 0.86, ext: 0.07,
+  },
+  {
+    id: 'pit', name: 'Pitbike SM 12"', short: 'Pitbike', look: 'd', color: '#202327',
+    m: 72,  P: 11,  L: 1.17,  h: 0.72, ff: 0.47, mu: 1.4,  rr: 0.243, rw: 0.242, rake: 26, hp: 0.33, ls: 0.46,
+    aMax: 10.5, brk: 5.5, eb: 0.8, tau: 0.05, me: 17, ms: 2.5, k2: 0.24, dx: 0.15,
+    seat: 0.78, fork: 0.66, ext: 0.05,
+  },
+  {
+    id: 'sm', name: 'Supermoto 450', short: 'SM 450', look: 'd', color: '#e33b34',
+    m: 118, P: 40,  L: 1.49,  h: 0.95, ff: 0.46, mu: 1.35, rr: 0.3,   rw: 0.3,   rake: 26, hp: 0.45, ls: 0.585,
+    aMax: 12,   brk: 7,   eb: 1.2, tau: 0.05, me: 21, ms: 3.5, k2: 0.3,  dx: 0.17,
+    seat: 0.94, fork: 0.92, ext: 0.08,
+  },
+  {
+    id: 'cbr', name: 'CBR600', short: 'CBR600', look: 's', color: '#e0483e',
+    m: 195, P: 85,  L: 1.375, h: 0.76, ff: 0.52, mu: 1.2,  rr: 0.308, rw: 0.3,   rake: 24, hp: 0.44, ls: 0.58,
+    aMax: 10,   brk: 5,   eb: 0.8, tau: 0.05, me: 24, ms: 6,   k2: 0.3,  dx: 0.12,
+    seat: 0.82, fork: 0.72, ext: 0.04,
+  },
+  {
+    id: 'gsxr', name: 'GSX-R 1000', short: 'GSX-R', look: 's', color: '#3d8bff',
+    m: 203, P: 140, L: 1.42,  h: 0.78, ff: 0.51, mu: 1.2,  rr: 0.304, rw: 0.3,   rake: 24, hp: 0.43, ls: 0.58,
+    aMax: 12.5, brk: 5,   eb: 1.0, tau: 0.05, me: 24, ms: 6,   k2: 0.3,  dx: 0.12,
+    seat: 0.83, fork: 0.72, ext: 0.04,
+  },
+];
+
+/** The rearmost point of the tail, relative to the rear contact patch with the bike level [m]. */
+function tailPoint(bk) {
+  if (bk.look === 's') return [-1.05 * bk.rr, bk.seat + 0.1];
+  if (bk.look === 'e') return [-1.33 * bk.rr, bk.seat - 0.03];
+  return [-1.45 * bk.rr, bk.seat - 0.02];
+}
+
+/** Pitch at which the tail touches flat ground [rad]. */
+function tailAngle(bk) {
+  const [tx, ty] = tailPoint(bk);
+  const f = (a) => bk.rr + tx * Math.sin(a) + (ty - bk.rr) * Math.cos(a);
+  let lo = 0.2,
+    hi = 1.6;
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2;
+    if (f(mid) > 0) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
+
+const PREP = new Map();
+
+/**
+ * Constants of a bike used by every physics step, computed once.
+ * b0, hc: CoG ahead of and above the rear axle; mu, jm: drivetrain inertia terms; ev, kf, cf, cmax:
+ * fork travel to top-out, stiffness, damping and bump stop; tp, tail, kt, ct: tail point, contact
+ * angle, stiffness and damping; mred, rho: rider-on-seat coupling.
+ */
+function prep(bk) {
+  let c = PREP.get(bk.id);
+  if (c) return c;
+  const M = bk.m + RIDER;
+  const yR = bk.seat + 0.2;
+  const yB = (M * bk.h - RIDER * yR) / bk.m;
+  const b0 = bk.ff * bk.L,
+    hc = bk.h - bk.rr,
+    mu = M / (M + bk.me),
+    jm = (bk.rr * (bk.ms - bk.me)) / M;
+  const ev = bk.ext * Math.cos(bk.rake * RAD);
+  const kf = (bk.ff * M * G) / ev;
+  const den0 = bk.k2 + b0 * b0 + (1 - mu) * hc * hc - mu * hc * jm;
+  const tp = tailPoint(bk);
+  const tail = tailAngle(bk);
+  const xt0 = tp[0] * Math.cos(tail) - (tp[1] - bk.rr) * Math.sin(tail);
+  const pxT = b0 * Math.cos(tail) - hc * Math.sin(tail),
+    pyT = b0 * Math.sin(tail) + hc * Math.cos(tail);
+  const meT = (M * (bk.k2 + pxT * pxT + (1 - mu) * pyT * pyT - mu * pyT * jm)) / (xt0 * xt0);
+  const kt = (M * G) / 0.012;
+  c = {
+    M,
+    b0,
+    hc,
+    mu,
+    jm,
+    ev,
+    kf,
+    tp,
+    tail,
+    kt,
+    ct: 1.4 * Math.sqrt(kt * meT),
+    cf: (2 * Math.sqrt(kf * M * den0)) / bk.L,
+    cmax: 3.5 * ev,
+    mred: (bk.m * RIDER) / M,
+    rho: yR - yB,
+  };
+  PREP.set(bk.id, c);
+  return c;
+}
+
+/** Distance of the CoG ahead of the rear axle with the rider at body (−1 back … 1 forward) [m]. */
+function cogB(bk, body) {
+  const c = prep(bk);
+  return c.b0 + (RIDER * body * bk.dx) / c.M;
+}
+
+/** Pitch with the CoG right above the rear axle [rad]. */
+function balancePoint(bk, body) {
+  return Math.atan2(cogB(bk, body), prep(bk).hc);
+}
+
+/** Time for a small deviation from the balance point to double with no input [s]. */
+function doubling(bk) {
+  const c = prep(bk);
+  const d = Math.hypot(c.b0, c.hc);
+  const lam = Math.sqrt((G * d) / (bk.k2 + (1 - c.mu) * d * d - c.mu * d * c.jm));
+  return Math.LN2 / lam;
+}
+
+/** Acceleration that starts lifting the front wheel [m/s²]. */
+function liftLimit(bk, body) {
+  const c = prep(bk);
+  return (G * cogB(bk, body)) / (bk.rr + c.mu * (c.hc + c.jm));
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The road: flat asphalt with a seeded sequence of bumps and dips that grow over the first 600 m.
+
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function makeRoad(seed) {
+  const r = rng(seed);
+  const bumps = [];
+  let x = 70;
+  while (x < 6000) {
+    const k = Math.min(1, x / 600);
+    const hgt = 0.015 + r() * (0.02 + 0.03 * k);
+    const len = 0.5 + r() * 0.7;
+    bumps.push({ x, len, h: r() < 0.25 ? -hgt * 0.7 : hgt });
+    x += 14 + r() * (34 - 18 * k);
+  }
+  function find(px) {
+    let lo = 0,
+      hi = bumps.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const b = bumps[mid];
+      if (px < b.x) hi = mid - 1;
+      else if (px > b.x + b.len) lo = mid + 1;
+      else return b;
+    }
+    return null;
+  }
+  /** Index of the first bump that ends at or after px. */
+  function first(px) {
+    let lo = 0,
+      hi = bumps.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (bumps[mid].x + bumps[mid].len < px) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  }
+  return {
+    bumps,
+    first,
+    y(px) {
+      const b = find(px);
+      return b ? b.h * 0.5 * (1 - Math.cos((2 * Math.PI * (px - b.x)) / b.len)) : 0;
+    },
+    dy(px) {
+      const b = find(px);
+      return b ? ((b.h * Math.PI) / b.len) * Math.sin((2 * Math.PI * (px - b.x)) / b.len) : 0;
+    },
+  };
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// One time step of the bike. The pitch is a free-base rotation about the rear axle, with the
+// drivetrain inertia, the rider sliding on the seat, a sprung front fork and a sprung tail that can
+// scrape the asphalt. The rear tyre drives or brakes within its grip.
+
+/**
+ * x, v, t: position, speed, time; th, om: pitch and pitch rate; thrCmd, thr: throttle grip and the
+ * engine's response; brk: rear brake; s, sv: rider position on the seat (−1 back … 1 forward); zb,
+ * vzb: rear suspension over bumps; ra, fa, fw: wheel angles and front wheel speed for drawing;
+ * fork: fork extension for drawing (0 static sag, 1 topped out); air: front wheel off the ground;
+ * scrape, tailX: tail on the asphalt and its distance behind the axle; lifted: the attempt has
+ * started; done: why it ended ('down', 'loop', 'tail', 'late'); w…, bpTime, sumDev, maxTh, vMax,
+ * brkHist, impact: statistics of the attempt.
+ */
+function newState() {
+  // prettier-ignore
+  return {
+    t: 0, x: 0, v: 0, th: 0, om: 0,
+    thrCmd: 0, thr: 0, brk: 0, s: 0, sv: 0, fork: 0, zb: 0, vzb: 0,
+    ra: 0, fa: 0, fw: 0, slip: 0, air: false, lifted: false, done: null, impact: 0, scrape: false, tailX: 0, flip: false, stuck: 0,
+    wDist: 0, wTime: 0, bpTime: 0, maxTh: 0, sumDev: 0, vMax: 0, brkHist: 0,
+  };
+}
+
+/** Advances s by DT with the controls inp = { gas, brake, back, fwd }, each 0…1. */
+function step(s, bk, road, inp) {
+  const c = prep(bk);
+  const dt = DT;
+  s.thrCmd = approach(s.thrCmd, clamp(inp.gas || 0, 0, 1), 1 / 0.2, 1 / 0.12, dt);
+  s.thr += (s.thrCmd - s.thr) * Math.min(1, dt / bk.tau);
+  s.brk = approach(s.brk, clamp(inp.brake || 0, 0, 1), 1 / 0.15, 1 / 0.1, dt);
+  const target = clamp((inp.fwd || 0) - (inp.back || 0), -1, 1);
+  const sa = BODY_W * BODY_W * (target - s.s) - 2 * BODY_W * s.sv;
+  s.sv += sa * dt;
+  s.s += s.sv * dt;
+  if (Math.abs(s.s) > 1) {
+    s.s = Math.sign(s.s);
+    s.sv = 0;
+  }
+
+  const b = c.b0 + (RIDER * s.s * bk.dx) / c.M;
+  const cs = Math.cos(s.th),
+    sn = Math.sin(s.th);
+  const px = b * cs - c.hc * sn;
+  const py = b * sn + c.hc * cs;
+  const v = s.v;
+
+  const y0 = road.y(s.x);
+  const dy = road.dy(s.x);
+  const az = SUS_W * SUS_W * (y0 - s.zb) + 2 * SUS_Z * SUS_W * (v * dy - s.vzb);
+  s.vzb += az * dt;
+  s.zb += s.vzb * dt;
+  const geff = Math.max(0.2 * G, G + az);
+  const W = c.M * geff;
+
+  // Front fork: a spring through the static sag up to full extension, with a bump stop.
+  const xf = bk.L * cs - (bk.rw - bk.rr) * sn;
+  const xF = s.x + xf;
+  const z = bk.L * sn - (bk.rw - bk.rr) * (1 - cs) - (road.y(xF) - y0);
+  const zd = xf * s.om - v * (road.dy(xF) - dy);
+  const cv = c.ev - z;
+  let nF = 0;
+  if (cv > 0) {
+    nF = c.kf * cv - (zd > 0 ? FORK_ZR : FORK_ZC) * c.cf * zd;
+    if (cv > c.cmax) nF += 20 * c.kf * (cv - c.cmax);
+    nF = Math.max(0, nF);
+  }
+  const wasAir = s.air;
+  s.air = cv <= 0;
+
+  // Tail: a stiff spring on the asphalt. On first contact the bike goes over the tail when its
+  // angular momentum about the tail can lift the CoG over it.
+  const [tx, ty] = c.tp;
+  const zt = bk.rr + tx * sn + (ty - bk.rr) * cs;
+  const xt = tx * cs - (ty - bk.rr) * sn;
+  const nT = zt < 0 ? Math.max(0, -c.kt * zt - c.ct * xt * s.om) : 0;
+  const wasScrape = s.scrape;
+  s.scrape = nT > 0;
+  s.tailX = xt;
+  if (s.scrape) {
+    const dx = px - xt,
+      dz = py + bk.rr;
+    const r2 = dx * dx + dz * dz;
+    if (dx <= 0) s.flip = true;
+    else if (!wasScrape && s.om > 0) {
+      const w = (s.om * (bk.k2 + px * dx + py * dz)) / (bk.k2 + r2);
+      if (0.5 * (bk.k2 + r2) * w * w > geff * (Math.sqrt(r2) - dz)) s.flip = true;
+    }
+  }
+  s.stuck = s.scrape && v < 1 ? s.stuck + dt : 0;
+
+  // Longitudinal forces at the rear tyre; at a standstill the resistances only hold the bike.
+  const fReq = Math.min(bk.aMax * c.M, (bk.P * 1000) / Math.max(v, 1)) * s.thr * s.thr;
+  const nRear = Math.max(0, W - nF - nT);
+  const grip = bk.mu * nRear;
+  const fDrive = Math.min(grip, fReq);
+  s.slip = fReq > grip ? Math.min(1, (fReq - grip) / grip + 0.3) : 0;
+  let fEng = v > 0.3 ? bk.eb * c.M * Math.max(0, 1 - 4 * s.thr) : 0;
+  let fBrake = s.brk * Math.min(bk.brk * c.M, grip);
+  let fRoll = ROLL * W;
+  let fTail = TAIL_MU * nT * Math.min(1, v / 0.5);
+  const drag = AIR * v * v;
+  const fSlope = -W * dy;
+  if (v < 0.05) {
+    const room = Math.max(0, fDrive + fSlope - drag + (v * c.M) / dt);
+    const res = fEng + fBrake + fRoll + fTail;
+    if (res > room) {
+      const k = room / res;
+      fEng *= k;
+      fBrake *= k;
+      fRoll *= k;
+      fTail *= k;
+    }
+  }
+  const ft = fDrive - fEng - fBrake;
+  const fa = fSlope - fRoll;
+
+  // Pitch and forward motion, coupled through the axle acceleration.
+  const q = c.mu * (py + c.jm);
+  const den = bk.k2 + px * px + (1 - c.mu) * py * py - c.mu * py * c.jm;
+  const alpha =
+    (ft * (bk.rr + q) +
+      q * fa +
+      (py - q) * drag +
+      c.mred * c.rho * sa * bk.dx +
+      nF * xf +
+      nT * xt -
+      fTail * (bk.rr + q)) /
+      (c.M * den) +
+    (q * px * s.om * s.om - geff * px) / den;
+
+  if (wasAir && !s.air) s.impact = Math.max(s.impact, -s.om);
+  s.om += alpha * dt;
+  s.th += s.om * dt;
+  const aA = (ft + fa - drag - fTail + c.M * (py * alpha + px * s.om * s.om)) / (c.M + bk.me);
+
+  s.v = Math.max(0, v + aA * dt);
+  s.x += s.v * dt;
+  s.t += dt;
+  s.vMax = Math.max(s.vMax, s.v);
+  s.ra += (s.v / bk.rr) * dt;
+  s.fw = s.air ? s.fw * Math.max(0, 1 - 0.25 * dt) : s.v / bk.rw;
+  s.fa += s.fw * dt;
+  s.fork = s.air ? 1 : clamp(1 - cv / c.ev, -2.5, 1);
+  s.brkHist = Math.max(s.brk, s.brkHist - dt * 1.5);
+
+  // The distance counts with the front up and the tail off the asphalt.
+  if (s.air) {
+    if (!s.scrape) {
+      s.wDist += s.v * dt;
+      s.wTime += dt;
+      const dev = s.th - Math.atan2(b, c.hc);
+      s.sumDev += dev * dt;
+      if (Math.abs(dev) <= 3 * RAD) s.bpTime += dt;
+    }
+    s.maxTh = Math.max(s.maxTh, s.th);
+    if (s.th > LIFT_DEG * RAD) s.lifted = true;
+  } else if (!s.lifted) {
+    s.wDist = s.wTime = s.bpTime = s.sumDev = s.maxTh = s.impact = 0;
+  }
+
+  if (s.flip || s.th > c.tail + 10 * RAD) s.done = 'loop';
+  else if (s.stuck > 0.5) s.done = 'tail';
+  else if (s.lifted && !s.air) s.done = 'down';
+  else if (!s.lifted && s.x > RUNUP) s.done = 'late';
+  return s;
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Interface language. Polish is the source language: user-visible strings stay in the code as
+// templates tagged with i18n. For another edition the build defines DICT, which maps every Polish
+// template (with {} standing for each placeholder) to its translation; LANG is the edition's language.
+
+const DECIMAL = LANG === 'pl' ? ',' : '.';
+
+const translated = new WeakMap();
+
+function i18n(strings, ...values) {
+  let parts = translated.get(strings);
+  if (!parts) {
+    const source = strings.join('{}');
+    parts = (DICT?.[source] ?? source).split('{}');
+    translated.set(strings, parts);
+  }
+  let text = parts[0];
+  for (let i = 1; i < parts.length; i++) text += values[i - 1] + parts[i];
+  return text;
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Interface state, settings, colours and fonts taken from the stylesheet, and the link to SimGP8.
+
+const $ = (id) => document.getElementById(id);
+const deg = (r) => (r * 180) / Math.PI;
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', DECIMAL).replace('-', '−');
+const pct = (t) => Math.round(t * 100) + '%';
+const store = {
+  get(k, def) {
+    try {
+      const v = localStorage.getItem(k);
+      return v == null ? def : JSON.parse(v);
+    } catch (e) {
+      return def;
+    }
+  },
+  set(k, v) {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+    } catch (e) {}
+  },
+};
+
+const rootStyle = getComputedStyle(document.documentElement);
+const cssVar = (n) => rootStyle.getPropertyValue('--' + n).trim();
+const COL = {};
+['chalk', 'muted', 'dim', 'rule', 'panel', 'asphalt', 'ok', 'warn', 'rear', 'gas', 'spd'].forEach(
+  (k) => (COL[k] = cssVar(k)),
+);
+const FONT_MONO = cssVar('f-mono') || 'monospace';
+const FONT_DISPLAY = cssVar('f-display') || 'sans-serif';
+/** A stylesheet colour (#rrggbb) with transparency. */
+function alpha(hex, a) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COARSE = matchMedia('(pointer: coarse)');
+const LANDPADS = matchMedia('(pointer: coarse) and (orientation: landscape) and (max-height: 540px)');
+const TEMPOS = [1, 0.75, 0.5, 0.35];
+const cfg = Object.assign(
+  { bike: 'ebike', tempo: 0.5, cog: true, trend: true, sound: false },
+  store.get('simwheelie-cfg', {}),
+);
+if (!BIKES.some((b) => b.id === cfg.bike)) cfg.bike = 'ebike';
+if (!TEMPOS.includes(cfg.tempo)) cfg.tempo = 0.5;
+cfg.sound = false;
+const best = store.get('simwheelie-best', {});
+const bestKey = () => bike.id + '@' + cfg.tempo;
+const saveCfg = () => store.set('simwheelie-cfg', { bike: cfg.bike, tempo: cfg.tempo, cog: cfg.cog, trend: cfg.trend });
+
+const road = makeRoad(8);
+let bike = BIKES.find((b) => b.id === cfg.bike);
+let S = newState();
+let phase = 'ready';
+let paused = false;
+let trace = [];
+let traceT = 0;
+let crash = null;
+let shake = 0;
+let flash = 0;
+let parts = [];
+const keys = { gas: 0, brake: 0, back: 0, fwd: 0 };
+const pads = { gas: 0, brake: 0, back: 0, fwd: 0 };
+
+// The scene is redrawn only while something moves; anything else that changes it calls invalidate().
+let sceneDirty = true;
+let teleDirty = true;
+function invalidate() {
+  sceneDirty = true;
+  teleDirty = true;
+}
+
+// On secpro.pl both games live under the same key, /simwheelie/<key>/ and /simgp8/<key>/, with the
+// English editions in en/ below them. Elsewhere the other language is the file next to this one, as
+// in dist/; where there is none, the language link is hidden.
+const secpro = /^(.*)\/simwheelie\/([0-9a-f]{32})\//i.exec(location.pathname);
+if (secpro) {
+  const [, root, key] = secpro;
+  const en = (yes) => (yes ? 'en/' : '');
+  document.querySelectorAll('a[data-sibling]').forEach((a) => {
+    a.href = `${root}/simgp8/${key}/${en(LANG === 'en')}`;
+    a.removeAttribute('target');
+    a.removeAttribute('rel');
+  });
+  document.querySelectorAll('a[data-lang]').forEach((a) => (a.href = `${root}/simwheelie/${key}/${en(LANG !== 'en')}`));
+} else if (!/\/simwheelie-(pl|en)\.html$/.test(location.pathname)) {
+  document.querySelectorAll('a[data-lang]').forEach((a) => (a.hidden = true));
+}
+
+function segmented(el, val, onPick) {
+  el.querySelectorAll('button').forEach((b) => {
+    b.setAttribute('aria-pressed', String(b.dataset.v === String(val)));
+    b.addEventListener('click', () => {
+      onPick(b.dataset.v);
+      el.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      b.blur();
+    });
+  });
+}
+
+$('bikes').innerHTML = BIKES.map((b) => `<button data-v="${b.id}">${b.short}</button>`).join('');
+segmented($('bikes'), cfg.bike, (v) => {
+  cfg.bike = v;
+  bike = BIKES.find((b) => b.id === v);
+  saveCfg();
+  reset();
+  bikeInfo();
+});
+segmented($('tempo'), cfg.tempo, (v) => {
+  cfg.tempo = Number(v);
+  saveCfg();
+  reset();
+});
+$('view')
+  .querySelectorAll('button')
+  .forEach((b) => {
+    const k = b.dataset.v;
+    b.setAttribute('aria-pressed', String(!!cfg[k]));
+    b.addEventListener('click', () => {
+      cfg[k] = !cfg[k];
+      b.setAttribute('aria-pressed', String(cfg[k]));
+      if (k === 'sound') sound.toggle(cfg.sound);
+      saveCfg();
+      invalidate();
+      b.blur();
+    });
+  });
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The bike data table, the start and result cards, and the tip after each attempt.
+
+function bikeInfo() {
+  const c = prep(bike);
+  const bp = (b) => Math.round(deg(balancePoint(bike, b)));
+  $('dblTxt').textContent =
+    i18n`Na motocyklu ${bike.name} odchylenie od BP rośnie dwukrotnie mniej więcej co ${fmt(doubling(bike), 2)} s, jeśli nic nie zrobisz.`;
+  $('specTitle').textContent = i18n`Dane: ${bike.name}`;
+  const rows = [
+    [i18n`Masa z kierowcą`, `${c.M} kg`],
+    [i18n`Rozstaw osi`, `${fmt(bike.L, 2)} m`],
+    [
+      i18n`Środek ciężkości: przed tylną osią / nad asfaltem`,
+      `${Math.round(c.b0 * 100)} / ${Math.round(bike.h * 100)} cm`,
+    ],
+    [i18n`Promień tylnego koła`, `${Math.round(bike.rr * 100)} cm`],
+    [i18n`Balance point: ciało w środku / z tyłu / z przodu`, `${bp(0)}° / ${bp(-1)}° / ${bp(1)}°`],
+    [i18n`Ogon dotyka asfaltu od`, `${Math.round(deg(c.tail))}°`],
+    [i18n`Moc`, `${bike.P} kW`],
+    [i18n`Najmocniejsze przyspieszenie na niskiej prędkości`, `${fmt(bike.aMax)} m/s²`],
+    [
+      i18n`Przód rusza z ziemi od przyspieszenia (ciało w środku / z tyłu)`,
+      `${fmt(liftLimit(bike, 0))} / ${fmt(liftLimit(bike, -1))} m/s²`,
+    ],
+    [i18n`Najmocniejszy tylny hamulec na kole`, `${fmt(bike.brk)} m/s²`],
+    [i18n`Widelec od ugięcia pod ciężarem do pełnego wybicia`, `${Math.round(bike.ext * 100)} cm`],
+    [i18n`Przesunięcie ciała na siedzeniu`, `±${Math.round(bike.dx * 100)} cm`],
+  ];
+  $('spec').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  drawBpDemo();
+}
+
+function clearRun(next) {
+  S = newState();
+  trace = [];
+  traceT = 0;
+  crash = null;
+  parts = [];
+  phase = next;
+  paused = false;
+  invalidate();
+}
+
+function reset() {
+  clearRun('ready');
+  showReady();
+}
+
+function start() {
+  clearRun('ride');
+  $('overlay').hidden = true;
+  sound.resume();
+  if (LANDPADS.matches) $('play').scrollIntoView({ block: 'end', behavior: 'smooth' });
+}
+
+function showReady() {
+  const rec = best[bestKey()];
+  const weak = bike.aMax < liftLimit(bike, 0) * 1.04;
+  $('overlay').hidden = false;
+  $('overlay').innerHTML = `<div class="card">
+    <h2>${bike.name}</h2>
+    <p class="meta">BP ${Math.round(deg(balancePoint(bike, 0)))}° · ${i18n`tempo ${pct(cfg.tempo)}`}${rec ? ' · ' + i18n`rekord ${fmt(rec)} m` : ''}</p>
+    <p>${i18n`Rozpędź się i poderwij przód gazem z ciałem do tyłu, a potem trzymaj motocykl jak najbliżej <b>balance pointu</b>. Próba zaczyna się, gdy przód wstanie ponad ${LIFT_DEG}°, a wcześniejsze podskoki nie kończą gry. Wynikiem jest dystans na tylnym kole. Próba kończy się, gdy przód dotknie asfaltu albo motocykl przewróci się do tyłu. Przycierki tyłem są dozwolone, ale ten odcinek nie wlicza się do dystansu.`}</p>
+    ${weak ? `<p class="hint">${i18n`Na samym gazie przód tego motocykla ledwo rusza. Przesuń ciało do tyłu albo napompuj przód: krótko przyhamuj tyłem i od razu dodaj gazu.`}</p>` : ''}
+    <p class="keys">${i18n`<kbd>↑</kbd> gaz · <kbd>↓</kbd> tylny hamulec · <kbd>←</kbd> <kbd>→</kbd> ciało`}</p>
+    <p>${cfg.tempo < 1 ? i18n`Tempo ${pct(cfg.tempo)}: czas płynie wolniej, fizyka zostaje ta sama.` + ' ' : ''}${i18n`100% to czas rzeczywisty.`}</p>
+    <button class="btn go" id="goBtn">${i18n`Start (Spacja)`}</button>
+  </div>`;
+  $('goBtn').addEventListener('click', start);
+}
+
+function tipFor(r) {
+  if (r.reason === 'late')
+    return i18n`Przesuń ciało do tyłu i otwórz gaz do końca. Gdy przód ruszy w górę, od razu przymykaj manetkę, zanim dojdzie do balance pointu. Możesz też napompować przód: krótko przyhamuj tyłem, puść hamulec i od razu dodaj gazu.`;
+  if (r.reason === 'loop') {
+    if (r.brk < 0.3)
+      return i18n`Ogon uderzył w asfalt za szybko i motocykl przewrócił się przez niego, a tylny hamulec prawie nie pracował. Trzymaj stopę na hamulcu i naciśnij go, zanim przód przejdzie przez BP. Wtedy ogon najwyżej przyciera.`;
+    return i18n`Hamulec przyszedł za późno i ogon uderzył w asfalt za szybko. Za balance pointem środek ciężkości jest tuż przed ogonem, więc mocne uderzenie przerzuca motocykl. Naciśnij hamulec wcześniej, wtedy ogon tylko przyciera.`;
+  }
+  if (r.reason === 'tail')
+    return i18n`Motocykl usiadł na ogonie i stracił prędkość. Gdy ogon dotknie asfaltu, od razu naciśnij tylny hamulec i przesuń ciało do przodu, póki jeszcze jedziesz. Hamowanie ściąga przód w dół i zdejmuje motocykl z ogona.`;
+  if (r.meanDev < -8)
+    return i18n`Przód był średnio ${fmt(-r.meanDev, 0)}° pod balance pointem. Tak nisko przód trzyma się tylko na przyspieszaniu, a ono kiedyś się kończy. Podnieś przód bliżej BP, wtedy wystarczy odrobina gazu.`;
+  if (r.brkAtEnd > 0.3)
+    return i18n`Przód spadł przy wciśniętym hamulcu. Po korekcie hamulcem od razu go puść i dodaj trochę gazu.`;
+  if (r.vMax * 3.6 > 70)
+    return i18n`Prędkość rosła, aż zabrakło mocy na trzymanie przodu. Bliżej BP gazu potrzeba mało i prędkość przestaje rosnąć.`;
+  if (r.bpPct >= 40)
+    return i18n`Dobrze trzymasz okolice BP. Teraz pracuj nad mniejszymi ruchami manetką: krótko i mało zamiast pełnych otwarć.`;
+  return i18n`Przód spadł, bo zabrakło gazu. Gdy przód zaczyna opadać, dodaj gazu od razu, zanim spadnie o kilka stopni.`;
+}
+
+const END_TITLE = {
+  loop: i18n`Przewrotka przez ogon`,
+  tail: i18n`Motocykl utknął na ogonie`,
+  down: i18n`Przód na ziemi`,
+  late: i18n`Przód nie poszedł w górę`,
+};
+
+function finish() {
+  phase = 'over';
+  invalidate();
+  const r = {
+    reason: S.done,
+    dist: S.wDist,
+    time: S.wTime,
+    bpPct: S.wTime > 0 ? (100 * S.bpTime) / S.wTime : 0,
+    maxTh: S.maxTh,
+    meanDev: S.wTime > 0 ? deg(S.sumDev / S.wTime) : 0,
+    vMax: S.vMax,
+    brk: S.brkHist,
+    brkAtEnd: S.brk,
+    impact: S.impact,
+  };
+  if (r.reason === 'loop') {
+    crash = { om: Math.max(1.5, S.om), v: S.v };
+    flash = 1;
+    sound.crash();
+  } else if (r.reason === 'down' && r.impact > 1.5) {
+    shake = Math.min(0.4, r.impact * 0.08);
+  }
+  const k = bestKey();
+  const isRec = r.reason !== 'late' && r.dist >= 1 && r.dist > (best[k] || 0);
+  if (isRec) {
+    best[k] = Math.round(r.dist * 10) / 10;
+    store.set('simwheelie-best', best);
+  }
+  const hard =
+    r.reason === 'down' && r.impact > 2.5
+      ? `<p>${i18n`Przód spadł twardo. W realu takie lądowanie męczy widelec i wybija z rytmu.`}</p>`
+      : '';
+  const record = best[k] ? `${fmt(best[k])} m` : '–';
+  $('overlay').hidden = false;
+  $('overlay').innerHTML = `<div class="card">
+    <h2>${END_TITLE[r.reason]}</h2>
+    <div class="stats">
+      <div class="stat"><div class="k">${i18n`Dystans`}</div><div class="v${isRec ? ' rec' : ''}">${fmt(r.dist)} m</div></div>
+      <div class="stat"><div class="k">${i18n`Czas`}</div><div class="v">${fmt(r.time)} s</div></div>
+      <div class="stat"><div class="k">${i18n`Strefa BP`}</div><div class="v">${fmt(r.bpPct, 0)}%</div></div>
+    </div>
+    <p class="meta">${i18n`maks. ${fmt(deg(r.maxTh), 0)}° · maks. ${fmt(r.vMax * 3.6, 0)} km/h · rekord ${record} · tempo ${pct(cfg.tempo)}`}</p>
+    ${isRec ? `<p><b>${i18n`Nowy rekord.`}</b></p>` : ''}
+    <p class="tip">${tipFor(r)}</p>
+    ${hard}
+    <button class="btn go" id="goBtn">${i18n`Jeszcze raz (Spacja)`}</button>
+  </div>`;
+  $('goBtn').addEventListener('click', start);
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Keyboard and the touch pads. Both feed the same controls; the stronger of the two wins.
+
+// prettier-ignore
+const KEYMAP = { ArrowUp: 'gas', KeyW: 'gas', ArrowDown: 'brake', KeyS: 'brake', ArrowLeft: 'back', KeyA: 'back', ArrowRight: 'fwd', KeyD: 'fwd' };
+
+function setPaused(on) {
+  if (paused === on) return;
+  paused = on;
+  invalidate();
+}
+
+addEventListener('keydown', (e) => {
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const k = KEYMAP[e.code];
+  if (k) {
+    keys[k] = 1;
+    e.preventDefault();
+    return;
+  }
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (phase !== 'ride' && !e.repeat) start();
+  } else if (e.code === 'KeyP' && phase === 'ride') {
+    setPaused(!paused);
+  }
+});
+addEventListener('keyup', (e) => {
+  const k = KEYMAP[e.code];
+  if (k) keys[k] = 0;
+});
+addEventListener('blur', () => {
+  Object.keys(keys).forEach((k) => (keys[k] = 0));
+  Object.keys(pads).forEach((k) => (pads[k] = 0));
+  document.querySelectorAll('.pad.on').forEach((p) => p.classList.remove('on'));
+  if (phase === 'ride') setPaused(true);
+});
+
+const padsEl = $('pads');
+if (COARSE.matches) padsEl.classList.add('on');
+padsEl.querySelectorAll('.pad').forEach((p) => {
+  const k = p.dataset.k;
+  const down = (e) => {
+    e.preventDefault();
+    try {
+      p.setPointerCapture(e.pointerId);
+    } catch (err) {}
+    pads[k] = 1;
+    p.classList.add('on');
+    if (k === 'gas' && phase !== 'ride') start();
+    setPaused(false);
+  };
+  const up = () => {
+    pads[k] = 0;
+    p.classList.remove('on');
+  };
+  p.addEventListener('pointerdown', down);
+  p.addEventListener('pointerup', up);
+  p.addEventListener('pointercancel', up);
+  p.addEventListener('lostpointercapture', up);
+  p.addEventListener('contextmenu', (e) => e.preventDefault());
+});
+
+/** The controls as the physics sees them. */
+function controls() {
+  return {
+    gas: Math.max(keys.gas, pads.gas),
+    brake: Math.max(keys.brake, pads.brake),
+    back: Math.max(keys.back, pads.back),
+    fwd: Math.max(keys.fwd, pads.fwd),
+  };
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Engine, tail scrape and crash sounds, synthesised with Web Audio. Off until switched on.
+
+const sound = (() => {
+  let ac = null,
+    n = null;
+  function build() {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    const out = ac.createGain();
+    out.gain.value = 0;
+    out.connect(ac.destination);
+    const lp = ac.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 700;
+    lp.connect(out);
+    const o1 = ac.createOscillator();
+    const o2 = ac.createOscillator();
+    o1.type = 'sawtooth';
+    o2.type = 'square';
+    const g2 = ac.createGain();
+    g2.gain.value = 0.5;
+    o1.connect(lp);
+    o2.connect(g2).connect(lp);
+    o1.start();
+    o2.start();
+    const nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    const ns = ac.createBufferSource();
+    ns.buffer = nb;
+    ns.loop = true;
+    const bp = ac.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 2600;
+    bp.Q.value = 0.9;
+    const gs = ac.createGain();
+    gs.gain.value = 0;
+    ns.connect(bp).connect(gs).connect(ac.destination);
+    ns.start();
+    n = { out, lp, o1, o2, gs };
+  }
+  return {
+    toggle(on) {
+      try {
+        if (on && !ac) build();
+        if (ac) on ? ac.resume() : ac.suspend();
+      } catch (e) {}
+    },
+    resume() {
+      if (cfg.sound && ac) ac.resume().catch(() => {});
+    },
+    update(st, riding) {
+      if (!cfg.sound || !n) return;
+      const t = ac.currentTime;
+      const e = bike.look === 'e';
+      let f, vol, cut;
+      if (e) {
+        f = 140 + 70 * st.v;
+        vol = riding ? 0.02 + 0.05 * st.thr + 0.004 * st.v : 0;
+        cut = 2400;
+      } else {
+        f = Math.min(260, 26 + 8 * st.v + 30 * st.thr);
+        vol = riding ? 0.05 + 0.1 * st.thr : 0;
+        cut = 500 + 1600 * st.thr;
+      }
+      const wave = e ? 'triangle' : 'sawtooth';
+      if (n.o1.type !== wave) n.o1.type = wave;
+      n.o1.frequency.setTargetAtTime(f, t, 0.03);
+      n.o2.frequency.setTargetAtTime(e ? f * 2.01 : f / 2, t, 0.03);
+      n.lp.frequency.setTargetAtTime(cut, t, 0.05);
+      n.out.gain.setTargetAtTime(vol, t, 0.06);
+      const scrape = riding && st.scrape && st.v > 0.5 ? Math.min(0.14, 0.04 + 0.012 * st.v) : 0;
+      n.gs.gain.setTargetAtTime(scrape, t, 0.03);
+    },
+    crash() {
+      if (!cfg.sound || !ac) return;
+      try {
+        const len = ac.sampleRate * 0.5;
+        const buf = ac.createBuffer(1, len, ac.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
+        const src = ac.createBufferSource();
+        const g = ac.createGain();
+        g.gain.value = 0.25;
+        src.buffer = buf;
+        src.connect(g).connect(ac.destination);
+        src.start();
+      } catch (e) {}
+    },
+  };
+})();
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Canvas sizing and drawing primitives. The bike is drawn in metres; PX is one CSS pixel in the
+// current units, so that thin lines never vanish when the view is small.
+
+let PX = 0.01;
+
+// Canvas sizes come from a ResizeObserver, so the animation loop never has to read the layout.
+const canvasSize = new Map();
+const resizeObserver =
+  typeof ResizeObserver === 'function'
+    ? new ResizeObserver((entries) => {
+        for (const e of entries) {
+          canvasSize.set(e.target, { width: e.contentRect.width, height: e.contentRect.height });
+          if (e.target.id === 'bpc') drawBpDemo();
+        }
+        invalidate();
+      })
+    : null;
+addEventListener('resize', () => {
+  invalidate();
+  drawBpDemo();
+});
+
+/** Matches the canvas backing store to its size on screen; returns the size in CSS pixels. */
+function fit(c, g) {
+  let r = canvasSize.get(c);
+  if (!r) {
+    r = c.getBoundingClientRect();
+    if (resizeObserver) {
+      canvasSize.set(c, { width: r.width, height: r.height });
+      resizeObserver.observe(c);
+    }
+  }
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  const w = Math.max(1, Math.round(r.width * dpr));
+  const h = Math.max(1, Math.round(r.height * dpr));
+  if (c.width !== w || c.height !== h) {
+    c.width = w;
+    c.height = h;
+  }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { w: r.width, h: r.height };
+}
+
+/** Middle joint of a two-segment limb from a to b with lengths l1, l2, bent to the side sign. */
+function joint(a, b, l1, l2, sign) {
+  const dx = b[0] - a[0],
+    dy = b[1] - a[1];
+  const d = Math.min(Math.hypot(dx, dy), l1 + l2 - 1e-4);
+  const t = Math.atan2(dy, dx) + sign * Math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1));
+  return [a[0] + l1 * Math.cos(t), a[1] + l1 * Math.sin(t)];
+}
+const add = (p, x, y) => [p[0] + x, p[1] + y];
+const mix = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+
+function poly(g, pts, fill, stroke, lw) {
+  g.beginPath();
+  g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.closePath();
+  if (fill) {
+    g.fillStyle = fill;
+    g.fill();
+  }
+  if (stroke) {
+    g.strokeStyle = stroke;
+    g.lineWidth = lw;
+    g.lineJoin = 'round';
+    g.stroke();
+  }
+}
+
+function line(g, a, b, col, lw) {
+  g.strokeStyle = col;
+  g.lineWidth = Math.max(lw, PX);
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(a[0], a[1]);
+  g.lineTo(b[0], b[1]);
+  g.stroke();
+}
+
+function path(g, pts, col, lw) {
+  g.strokeStyle = col;
+  g.lineWidth = Math.max(lw, PX);
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.stroke();
+}
+
+function disc(g, c, r, fill) {
+  g.fillStyle = fill;
+  g.beginPath();
+  g.arc(c[0], c[1], r, 0, Math.PI * 2);
+  g.fill();
+}
+
+function ring(g, c, r, col, lw, a0 = 0, a1 = Math.PI * 2) {
+  g.strokeStyle = col;
+  g.lineWidth = Math.max(lw, PX);
+  g.beginPath();
+  g.arc(c[0], c[1], r, a0, a1);
+  g.stroke();
+}
+
+function lum(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+}
+
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
+  return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+}
+
+/** Text of height sizeM [m] at (x, y), upright in the bike's frame whatever the transform. */
+function label(g, x, y, sizeM, text, col) {
+  const m = g.getTransform();
+  const p = m.transformPoint(new DOMPoint(x, y));
+  const k = Math.hypot(m.a, m.b);
+  if (sizeM * k < 5) return;
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.translate(p.x, p.y);
+  g.rotate(Math.atan2(m.b, m.a));
+  g.fillStyle = col;
+  g.font = `700 ${sizeM * k}px ${FONT_DISPLAY}`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, 0, 0);
+  g.restore();
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The bike and its rider, drawn in metres from the rear contact patch with the bike level.
+// geom() gives the key points: R, F wheel centres, Pv swingarm pivot, H, Hl steering head, B
+// handlebar, Sf, Sr seat front and rear, T tail, hip and footpeg.
+
+function geom(bk, fork, body) {
+  const rk = bk.rake * RAD;
+  const u = [Math.sin(rk), -Math.cos(rk)];
+  const sport = bk.look === 's';
+  const pvx = Math.sqrt(bk.ls * bk.ls - (bk.hp - bk.rr) ** 2);
+  const F0 = [bk.L, bk.rw];
+  const e = fork * bk.ext;
+  const H = [F0[0] - bk.fork * u[0], F0[1] - bk.fork * u[1]];
+  const Sf = [H[0] - (sport ? 0.42 : bk.look === 'e' ? 0.33 : 0.38), bk.seat];
+  const Sr = sport ? [pvx - 0.28, bk.seat + 0.03] : [-0.03 - 0.05 * (bk.rr / 0.3), bk.seat + 0.01];
+  return {
+    u,
+    R: [0, bk.rr],
+    Pv: [pvx, bk.hp],
+    F: [F0[0] + e * u[0], F0[1] + e * u[1]],
+    H,
+    Hl: [H[0] + 0.15 * u[0], H[1] + 0.15 * u[1]],
+    B: sport ? [H[0] - 0.09, H[1] - 0.07] : [H[0] - 0.12, H[1] + 0.15],
+    Sf,
+    Sr,
+    peg: sport ? [pvx - 0.04, bk.hp - 0.02] : [pvx + 0.05, bk.hp - 0.04],
+    hip: [Sr[0] + (Sf[0] - Sr[0]) * (sport ? 0.45 : 0.5) + body * bk.dx, bk.seat + 0.1],
+    T: tailPoint(bk),
+  };
+}
+
+function wheel(g, c, r, ang, bk, front) {
+  const sport = bk.look === 's';
+  disc(g, c, r, '#0f1113');
+  ring(g, c, r * 0.9, '#1c1f23', r * 0.06);
+  const rim = bk.rr < 0.26 ? 0.63 : 0.72;
+  ring(g, c, r * rim, sport ? '#24272b' : '#b2b7bc', r * 0.075);
+  if (sport) ring(g, c, r * (rim - 0.035), bk.color, r * 0.02);
+  // Spokes, or the arms of a cast wheel, in one stroke; they are opaque, so overlaps look the same.
+  const at = (a, k) => [c[0] + Math.cos(a) * r * k, c[1] + Math.sin(a) * r * k];
+  const spoke = (a, k0, b, k1) => {
+    g.moveTo(...at(a, k0));
+    g.lineTo(...at(b, k1));
+  };
+  g.beginPath();
+  if (sport) {
+    for (let i = 0; i < 3; i++) {
+      const a = ang + (i * Math.PI * 2) / 3;
+      spoke(a, 0.15, a - 0.13, rim * 0.97);
+      spoke(a, 0.15, a + 0.13, rim * 0.97);
+    }
+  } else {
+    for (let i = 0; i < 18; i++) {
+      const a = ang + (i * Math.PI * 2) / 18;
+      spoke(a, 0.12, a + 0.42, rim);
+    }
+  }
+  g.strokeStyle = sport ? '#24272b' : '#c4c8cc';
+  g.lineWidth = Math.max(sport ? r * 0.06 : 0.006, PX);
+  g.lineCap = 'round';
+  g.stroke();
+  const dr = front ? (sport ? 0.155 : bk.rr < 0.26 ? 0.11 : 0.16) : bk.rr < 0.26 ? 0.08 : 0.11;
+  if (front || !sport) {
+    ring(g, c, dr, '#8a9096', 0.032);
+    g.fillStyle = '#3a3f44';
+    g.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = ang + (i * Math.PI * 2) / 10;
+      const x = c[0] + Math.cos(a) * dr;
+      const y = c[1] + Math.sin(a) * dr;
+      g.moveTo(x + 0.006, y);
+      g.arc(x, y, 0.006, 0, Math.PI * 2);
+    }
+    g.fill();
+  }
+  disc(g, c, r * 0.13, '#5c6166');
+  disc(g, c, r * 0.05, '#c9cdd1');
+}
+
+const RIDER_COL = {
+  helmet: '#ece8dd',
+  accent: '#ff6b1a',
+  jersey: '#2c3540',
+  pants: '#3a4049',
+  boot: '#e3dfd3',
+  glove: '#1d2024',
+  visor: '#14171a',
+};
+
+function limbs(g, geo, far) {
+  const k = far ? 0.62 : 1;
+  const c = (hex) => (far ? shade(hex, k) : hex);
+  const hip = far ? add(geo.hip, 0.02, 0) : geo.hip;
+  const peg = far ? add(geo.peg, 0.02, 0) : geo.peg;
+  const ankle = add(peg, -0.02, 0.07);
+  const knee = joint(hip, ankle, 0.45, 0.46, 1);
+  line(g, hip, knee, c(RIDER_COL.pants), 0.15);
+  line(g, knee, ankle, c(RIDER_COL.pants), 0.12);
+  poly(
+    g,
+    [
+      add(ankle, -0.06, 0.14),
+      add(ankle, 0.05, 0.15),
+      add(peg, 0.15, 0.03),
+      add(peg, 0.16, -0.03),
+      add(peg, -0.07, -0.035),
+      add(ankle, -0.07, 0.0),
+    ],
+    c(RIDER_COL.boot),
+  );
+  poly(
+    g,
+    [add(peg, -0.07, -0.035), add(peg, 0.16, -0.03), add(peg, 0.16, -0.05), add(peg, -0.07, -0.055)],
+    c('#1b1d20'),
+  );
+  if (!far) line(g, add(knee, 0.02, 0.02), add(knee, 0.06, -0.12), '#5a616a', 0.05);
+}
+
+function arm(g, geo, sh, far) {
+  const c = (hex) => (far ? shade(hex, 0.62) : hex);
+  const B = far ? add(geo.B, 0.03, 0.01) : geo.B;
+  const el = joint(sh, B, 0.31, 0.3, -1);
+  line(g, sh, el, c(RIDER_COL.jersey), 0.1);
+  line(g, el, B, c(RIDER_COL.jersey), 0.085);
+  if (!far) line(g, mix(sh, el, 0.2), mix(el, B, 0.8), RIDER_COL.accent, 0.015);
+  disc(g, B, 0.045, c(RIDER_COL.glove));
+}
+
+function torso(geo, bk, pose) {
+  let phi = Math.max(bk.look === 's' ? 0.72 : 0.3, 0.65 * (pose.th || 0)) + 0.12 * (pose.s || 0);
+  let sh;
+  for (let i = 0; i < 40; i++) {
+    sh = [geo.hip[0] + 0.55 * Math.sin(phi), geo.hip[1] + 0.55 * Math.cos(phi)];
+    if (Math.hypot(geo.B[0] - sh[0], geo.B[1] - sh[1]) < 0.57) break;
+    phi += 0.02;
+  }
+  return { phi, sh };
+}
+
+function drawRiderBody(g, geo, bk, pose, trunk) {
+  const { phi, sh } = trunk;
+  const a = [Math.sin(phi), Math.cos(phi)];
+  const f = [Math.cos(phi), -Math.sin(phi)];
+  const hip = geo.hip;
+  const P = (p, s, t) => [p[0] + f[0] * s + a[0] * t, p[1] + f[1] * s + a[1] * t];
+  poly(
+    g,
+    [
+      P(hip, -0.1, -0.02),
+      P(hip, 0.1, -0.04),
+      P(hip, 0.12, 0.25),
+      P(sh, 0.11, -0.02),
+      P(sh, 0.04, 0.07),
+      P(sh, -0.09, 0.05),
+      P(sh, -0.14, -0.1),
+      P(hip, -0.13, 0.2),
+    ],
+    RIDER_COL.jersey,
+  );
+  path(g, [P(hip, -0.12, 0.05), P(hip, -0.135, 0.22), P(sh, -0.14, -0.1)], '#232a33', 0.03);
+  path(g, [P(hip, 0.0, 0.02), P(sh, 0.0, -0.04)], RIDER_COL.accent, 0.02);
+  line(g, P(hip, -0.1, 0.0), P(hip, 0.1, -0.02), '#1b1f24', 0.05);
+  const nphi = 0.45 * pose.th + 0.55 * phi;
+  const hd = add(sh, 0.2 * Math.sin(nphi) + 0.02, 0.2 * Math.cos(nphi));
+  line(g, sh, hd, '#1b1f24', 0.08);
+  helmet(g, hd, -0.8 * pose.th + (bk.look === 's' ? 0.1 : 0), bk.look === 's');
+}
+
+function helmet(g, c, rot, sport) {
+  g.save();
+  g.translate(c[0], c[1]);
+  g.rotate(rot);
+  disc(g, [0, 0], 0.14, RIDER_COL.helmet);
+  ring(g, [0, 0], 0.115, RIDER_COL.accent, 0.03, Math.PI * 0.55, Math.PI * 1.05);
+  if (sport) {
+    poly(
+      g,
+      [
+        [0.04, 0.05],
+        [0.145, 0.03],
+        [0.15, -0.04],
+        [0.05, -0.035],
+      ],
+      RIDER_COL.visor,
+    );
+    poly(
+      g,
+      [
+        [0.06, -0.05],
+        [0.15, -0.06],
+        [0.11, -0.13],
+        [0.0, -0.13],
+      ],
+      RIDER_COL.helmet,
+    );
+  } else {
+    poly(
+      g,
+      [
+        [0.05, -0.04],
+        [0.21, -0.07],
+        [0.18, -0.14],
+        [0.02, -0.135],
+      ],
+      RIDER_COL.helmet,
+    );
+    poly(
+      g,
+      [
+        [0.12, -0.075],
+        [0.2, -0.085],
+        [0.185, -0.12],
+        [0.11, -0.115],
+      ],
+      '#c7c2b6',
+    );
+    poly(
+      g,
+      [
+        [0.07, 0.04],
+        [0.165, 0.035],
+        [0.17, -0.03],
+        [0.075, -0.03],
+      ],
+      RIDER_COL.visor,
+    );
+    poly(
+      g,
+      [
+        [0.1, 0.03],
+        [0.16, 0.026],
+        [0.162, -0.01],
+        [0.103, -0.008],
+      ],
+      'rgba(255,107,26,0.55)',
+    );
+    poly(
+      g,
+      [
+        [0.0, 0.115],
+        [0.26, 0.105],
+        [0.25, 0.07],
+        [0.04, 0.07],
+      ],
+      RIDER_COL.accent,
+    );
+  }
+  g.restore();
+}
+
+function bodyDirt(g, bk, geo, col, dark) {
+  const { H, Hl, Pv, Sf, Sr, T } = geo;
+  const s = bk.seat,
+    hp = bk.hp;
+  const P = add;
+  const alu = '#8d939a';
+  path(g, [P(Pv, -0.12, s - hp - 0.3), P(Sr, 0.06, -0.12)], '#8f959b', 0.1);
+  disc(g, P(Sr, 0.06, -0.12), 0.045, '#5b6167');
+  poly(
+    g,
+    [P(Pv, 0.03, -0.07), P(Pv, 0.36, -0.12), P(Pv, 0.44, 0.03), P(Pv, 0.32, 0.17), P(Pv, 0.06, 0.15)],
+    '#3c4147',
+    '#202326',
+    0.006,
+  );
+  const c0 = P(Pv, 0.22, 0.13),
+    c1 = P(Pv, 0.4, 0.08),
+    c2 = P(Pv, 0.47, 0.32),
+    c3 = P(Pv, 0.3, 0.37);
+  poly(g, [c0, c1, c2, c3], '#585e65', '#202326', 0.006);
+  for (let i = 1; i < 5; i++) line(g, mix(c0, c3, i / 5), mix(c1, c2, i / 5), '#3c4147', 0.008);
+  path(g, [P(Pv, 0.42, 0.3), P(Pv, 0.5, 0.18), P(Pv, 0.46, 0.02), P(Pv, 0.2, -0.05)], '#a2a8ae', 0.038);
+  path(g, [P(H, -0.03, -0.07), [Pv[0] + 0.1, s - 0.28], P(Pv, 0.02, 0.04)], alu, 0.055);
+  path(g, [P(Hl, -0.02, 0), P(Pv, 0.47, -0.06), P(Pv, 0.3, -0.14)], '#3a3f45', 0.032);
+  line(g, [Pv[0] + 0.02, s - 0.27], P(Sr, 0.12, -0.08), alu, 0.028);
+  poly(
+    g,
+    [P(Sr, 0.16, -0.06), [T[0], T[1] + 0.015], [T[0] + 0.02, T[1] - 0.02], P(Sr, 0.18, -0.13)],
+    col,
+    geo.edge,
+    geo.ew,
+  );
+  poly(
+    g,
+    [P(Sr, 0.1, -0.04), [Pv[0], s - 0.03], [Pv[0] + 0.02, s - 0.3], P(Sr, 0.26, -0.27)],
+    '#e9e5da',
+    '#0b0c0d',
+    0.006,
+  );
+  const lc = mix(P(Sr, 0.18, -0.15), [Pv[0], s - 0.17], 0.5);
+  label(g, lc[0], lc[1], 0.13, '8', '#16181a');
+  poly(g, [P(Sr, -0.03, 0.025), [Sf[0] + 0.02, s + 0.03], [Sf[0] + 0.07, s - 0.03], P(Sr, 0, -0.04)], '#16181b');
+  const t0 = [Sf[0] - 0.02, s],
+    t1 = P(H, -0.1, -0.03),
+    t2 = P(H, -0.04, -0.12),
+    t3 = [H[0] - 0.1, s - 0.3],
+    t4 = [Sf[0] + 0.1, s - 0.32];
+  poly(g, [t0, t1, t2, t3, t4], col, geo.edge, geo.ew);
+  for (let i = 1; i < 4; i++)
+    line(
+      g,
+      mix(P(t4, 0.03, 0.06), P(t3, -0.01, 0.06), i / 4),
+      mix(P(t4, 0.05, 0.2), P(t2, -0.04, -0.06), i / 4),
+      dark,
+      0.012,
+    );
+}
+
+function bodyE(g, bk, geo, col, dark) {
+  const { R, H, Pv, Sf, Sr, T } = geo;
+  const s = bk.seat;
+  const P = add;
+  const lo = mix(R, Pv, 0.6),
+    hi = [Pv[0] - 0.12, s - 0.13];
+  line(g, lo, hi, '#2a2e32', 0.04);
+  line(g, mix(lo, hi, 0.18), mix(lo, hi, 0.8), '#d8a21f', 0.032);
+  poly(
+    g,
+    [
+      P(H, -0.02, -0.03),
+      [Sf[0] - 0.05, s - 0.04],
+      [Pv[0] - 0.04, s - 0.1],
+      P(Pv, -0.06, 0.06),
+      P(Pv, 0.02, -0.12),
+      P(Pv, 0.3, -0.14),
+      P(H, -0.08, -0.27),
+    ],
+    '#3a3f45',
+    '#1d2023',
+    0.006,
+  );
+  poly(
+    g,
+    [[Sf[0] - 0.03, s - 0.1], [Pv[0] + 0.02, s - 0.13], P(Pv, 0.04, 0.04), P(Pv, 0.28, -0.08), P(H, -0.13, -0.3)],
+    '#24282d',
+  );
+  poly(g, [[Pv[0] + 0.07, s - 0.17], P(H, -0.15, -0.33), P(H, -0.165, -0.4), [Pv[0] + 0.07, s - 0.25]], col);
+  disc(g, P(Pv, 0.08, -0.06), 0.08, '#1e2125');
+  ring(g, P(Pv, 0.08, -0.06), 0.055, '#555b62', 0.012);
+  poly(
+    g,
+    [P(Sr, 0.15, -0.06), [T[0], T[1] + 0.015], [T[0] + 0.02, T[1] - 0.02], P(Sr, 0.17, -0.12)],
+    '#2a2e33',
+    '#0b0c0d',
+    0.006,
+  );
+  poly(
+    g,
+    [P(Sr, 0.08, -0.04), [Pv[0] - 0.08, s - 0.03], [Pv[0] - 0.14, s - 0.2], P(Sr, 0.22, -0.18)],
+    col,
+    '#0b0c0d',
+    0.006,
+  );
+  const lc = mix(P(Sr, 0.15, -0.11), [Pv[0] - 0.11, s - 0.11], 0.5);
+  label(g, lc[0], lc[1], 0.11, '8', '#16181a');
+  poly(g, [P(Sr, -0.03, 0.025), [Sf[0] + 0.02, s + 0.03], [Sf[0] + 0.07, s - 0.03], P(Sr, 0, -0.04)], '#16181b');
+  poly(
+    g,
+    [
+      [Sf[0] - 0.01, s - 0.01],
+      P(H, -0.09, -0.04),
+      P(H, -0.05, -0.12),
+      [H[0] - 0.12, s - 0.16],
+      [Sf[0] + 0.09, s - 0.12],
+    ],
+    dark,
+    '#0b0c0d',
+    0.006,
+  );
+}
+
+function bodySport(g, bk, geo, col, dark) {
+  const { H, Pv, Sf, Sr, T } = geo;
+  const s = bk.seat,
+    hp = bk.hp;
+  const P = add;
+  poly(g, [P(Pv, 0.02, -0.1), P(Pv, 0.52, -0.18), P(Pv, 0.58, 0.1), P(Pv, 0.1, 0.2)], '#2c3035');
+  poly(
+    g,
+    [
+      P(H, -0.05, -0.03),
+      [Sf[0] + 0.04, s - 0.06],
+      P(Pv, 0.06, 0.14),
+      P(Pv, 0, -0.03),
+      P(Pv, 0.14, 0),
+      P(H, -0.1, -0.15),
+    ],
+    '#9aa1a8',
+    '#2a2e32',
+    0.006,
+  );
+  poly(
+    g,
+    [
+      [T[0] + 0.1, T[1] - 0.13],
+      [Pv[0] - 0.3, s - 0.12],
+      [Pv[0] - 0.38, s - 0.22],
+      [T[0] + 0.2, T[1] - 0.2],
+    ],
+    '#1d2023',
+  );
+  poly(
+    g,
+    [
+      P(Sr, 0.1, 0.0),
+      P(Sr, -0.1, 0.05),
+      [T[0] + 0.03, T[1]],
+      [T[0], T[1] - 0.055],
+      [T[0] + 0.1, T[1] - 0.13],
+      [Pv[0] - 0.3, s - 0.12],
+      [Pv[0] - 0.05, s - 0.1],
+    ],
+    col,
+    '#0b0c0d',
+    0.006,
+  );
+  poly(
+    g,
+    [
+      [T[0] + 0.025, T[1] - 0.008],
+      [T[0] + 0.06, T[1] - 0.012],
+      [T[0] + 0.045, T[1] - 0.05],
+      [T[0] + 0.005, T[1] - 0.047],
+    ],
+    '#ff5a4f',
+  );
+  poly(g, [P(Sr, -0.08, 0.06), P(Sr, 0.08, 0.02), P(Sr, 0.1, 0.0), P(Sr, -0.1, 0.045)], '#16181b');
+  poly(g, [P(Sr, 0.05, 0.005), [Sf[0], s + 0.0], [Sf[0] + 0.02, s - 0.03], P(Sr, 0.06, -0.03)], '#16181b');
+  poly(
+    g,
+    [
+      [Sf[0] - 0.03, s + 0.01],
+      [Sf[0] + 0.12, s + 0.12],
+      P(H, -0.12, 0.01),
+      P(H, -0.08, -0.1),
+      [Sf[0] + 0.12, s - 0.08],
+    ],
+    dark,
+    '#0b0c0d',
+    0.006,
+  );
+  poly(
+    g,
+    [
+      P(H, 0.17, -0.07),
+      P(H, 0.08, 0.06),
+      P(H, -0.04, 0.08),
+      P(H, -0.1, -0.02),
+      [Sf[0] + 0.14, s - 0.08],
+      [Sf[0] + 0.16, hp + 0.12],
+      P(Pv, 0.34, -0.14),
+      [H[0] + 0.02, hp - 0.16],
+      P(H, 0.12, -0.3),
+    ],
+    col,
+    '#0b0c0d',
+    0.006,
+  );
+  poly(g, [[Sf[0] + 0.22, s - 0.14], P(H, -0.12, -0.16), P(H, -0.08, -0.24), [Sf[0] + 0.25, s - 0.22]], dark);
+  poly(g, [P(H, 0.08, 0.06), P(H, -0.02, 0.2), P(H, -0.09, 0.16), P(H, -0.04, 0.08)], 'rgba(150,190,220,0.4)');
+  poly(g, [P(H, 0.165, -0.07), P(H, 0.12, -0.03), P(H, 0.1, -0.12)], '#e8e4d8');
+}
+
+function drawBike(g, bk, pose, wr, wf) {
+  const geo = geom(bk, pose.fork, pose.s);
+  const { u, R, Pv, F, H, Hl, B } = geo;
+  const col = bk.color;
+  const blk = lum(col) < 0.2;
+  const dark = blk ? '#5a6068' : shade(col, 0.55);
+  geo.edge = blk ? '#5a6068' : '#0b0c0d';
+  geo.ew = blk ? 0.011 : 0.006;
+  const sport = bk.look === 's';
+  const trunk = torso(geo, bk, pose);
+
+  arm(g, geo, [trunk.sh[0] + 0.02, trunk.sh[1]], true);
+  limbs(g, geo, true);
+  if (sport)
+    path(
+      g,
+      [
+        [Pv[0], bk.hp - 0.1],
+        [Pv[0] - 0.4, bk.hp + 0.06],
+      ],
+      '#9aa0a6',
+      0.11,
+    );
+
+  wheel(g, R, bk.rr, -wr, bk, false);
+  const k = bk.rr / 0.3;
+  ring(g, R, 0.1 * k, '#454a50', 0.012);
+  const fs = [Pv[0] + 0.07, Pv[1] + 0.01];
+  line(g, [fs[0], fs[1] + 0.035], [R[0], R[1] + 0.1 * k], '#2a2e32', 0.013);
+  line(g, [fs[0], fs[1] - 0.035], [R[0], R[1] - 0.1 * k], '#2a2e32', 0.013);
+  poly(
+    g,
+    [
+      [Pv[0], Pv[1] + 0.04],
+      [R[0] + 0.02, R[1] + 0.03],
+      [R[0] + 0.02, R[1] - 0.025],
+      [Pv[0], Pv[1] - 0.045],
+    ],
+    bk.look === 'e' ? '#6f767d' : '#8d939a',
+    '#2a2e32',
+    0.006,
+  );
+
+  if (sport) bodySport(g, bk, geo, col, dark);
+  else if (bk.look === 'e') bodyE(g, bk, geo, col, dark);
+  else bodyDirt(g, bk, geo, col, dark);
+
+  const fu = mix(H, F, 0.42);
+  const low = sport ? '#c8ccd0' : '#c9a227';
+  line(g, [F[0] - 0.012, F[1]], [fu[0] - 0.012, fu[1]], low, 0.036);
+  wheel(g, F, bk.rw, -wf, bk, true);
+  if (sport) ring(g, F, bk.rw + 0.03, '#1d2023', 0.035, Math.PI * 0.25, Math.PI * 0.75);
+  else {
+    if (blk) ring(g, F, bk.rw + 0.035, geo.edge, 0.062, Math.PI * 0.14, Math.PI * 0.86);
+    ring(g, F, bk.rw + 0.035, bk.look === 'e' ? '#2a2e33' : col, 0.045, Math.PI * 0.14, Math.PI * 0.86);
+  }
+  line(g, F, fu, low, 0.036);
+  line(g, fu, H, sport ? '#c9a227' : '#2b2f33', 0.062);
+  poly(
+    g,
+    [
+      [F[0] - 0.08, F[1] + 0.03],
+      [F[0] - 0.04, F[1] + 0.065],
+      [F[0] - 0.01, F[1] - 0.01],
+      [F[0] - 0.05, F[1] - 0.035],
+    ],
+    '#2b2f33',
+  );
+  const nx = [-u[1], u[0]];
+  for (const p of [H, Hl])
+    line(g, [p[0] - nx[0] * 0.05, p[1] - nx[1] * 0.05], [p[0] + nx[0] * 0.05, p[1] + nx[1] * 0.05], '#6d737a', 0.03);
+  if (sport) {
+    line(g, [H[0] - 0.01, H[1] - 0.06], B, '#1c1f22', 0.026);
+  } else {
+    poly(
+      g,
+      [
+        [H[0] + 0.03, H[1] + 0.04],
+        [H[0] + 0.12, H[1] - 0.04],
+        [H[0] + 0.09, H[1] - 0.25],
+        [H[0], H[1] - 0.2],
+      ],
+      bk.look === 'e' ? '#2a2e33' : '#e9e5da',
+      '#0b0c0d',
+      0.006,
+    );
+    if (bk.look === 'e')
+      poly(
+        g,
+        [
+          [H[0] + 0.1, H[1] - 0.07],
+          [H[0] + 0.115, H[1] - 0.05],
+          [H[0] + 0.1, H[1] - 0.15],
+        ],
+        '#e8e4d8',
+      );
+    line(g, [H[0] - 0.02, H[1] + 0.05], B, '#1c1f22', 0.024);
+  }
+
+  limbs(g, geo, false);
+  drawRiderBody(g, geo, bk, pose, trunk);
+  arm(g, geo, trunk.sh, false);
+  return geo;
+}
+
+function tailLift(bk, th) {
+  const [tx, ty] = tailPoint(bk);
+  const z = bk.rr + tx * Math.sin(th) + (ty - bk.rr) * Math.cos(th);
+  return Math.max(0, -z);
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The street seen from the side, following the bike: parallax background, road with bumps and
+// distance marks, the record marker, the bike, sparks and tyre smoke, and the CoG marker.
+
+const canvas = $('cv');
+const ctx = canvas.getContext('2d');
+
+function spawn(kind, x, y, n) {
+  if (REDUCED) return;
+  for (let i = 0; i < n; i++) {
+    if (kind === 'smoke')
+      parts.push({
+        kind,
+        x,
+        y: y + 0.05,
+        vx: (Math.random() - 0.5) * 0.6,
+        vy: 0.2 + Math.random() * 0.4,
+        life: 1,
+        r: 0.06,
+      });
+    else
+      parts.push({
+        kind,
+        x,
+        y,
+        vx: S.v * 0.4 + (Math.random() - 0.5) * 2,
+        vy: 0.5 + Math.random() * 2.5,
+        life: 0.5 + Math.random() * 0.4,
+      });
+  }
+  if (parts.length > 220) parts.splice(0, parts.length - 220);
+}
+
+function stepParts(dt) {
+  let n = 0;
+  for (const p of parts) {
+    if (p.kind === 'smoke') {
+      p.life -= dt * 0.9;
+      p.r += dt * 0.35;
+      p.vy *= 0.98;
+    } else {
+      p.life -= dt * 1.6;
+      p.vy -= 9.81 * dt;
+    }
+    p.x += p.vx * dt;
+    p.y = Math.max(0, p.y + p.vy * dt);
+    if (p.life > 0) parts[n++] = p;
+  }
+  parts.length = n;
+}
+
+// Sparks are stroked in a few brightness levels, one path per level.
+const SPARK_LEVELS = 6;
+function drawParts(toX, toY, sc, camV) {
+  for (const p of parts) {
+    if (p.kind !== 'smoke') continue;
+    ctx.fillStyle = `rgba(190,194,198,${0.28 * p.life})`;
+    ctx.beginPath();
+    ctx.arc(toX(p.x), toY(p.y), p.r * sc, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 2;
+  for (let lvl = 0; lvl < SPARK_LEVELS; lvl++) {
+    let any = false;
+    ctx.beginPath();
+    for (const p of parts) {
+      if (p.kind === 'smoke' || Math.min(SPARK_LEVELS - 1, Math.floor((p.life / 0.9) * SPARK_LEVELS)) !== lvl) continue;
+      ctx.moveTo(toX(p.x), toY(p.y));
+      ctx.lineTo(toX(p.x - (p.vx - camV) * 0.035), toY(p.y - p.vy * 0.035));
+      any = true;
+    }
+    if (!any) continue;
+    const life = ((lvl + 0.5) / SPARK_LEVELS) * 0.9;
+    ctx.strokeStyle = `rgba(255,${150 + Math.round(80 * life)},60,${Math.min(1, life * 1.3)})`;
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+}
+
+// Gradients depend only on the layout, so they are rebuilt only when it changes.
+const gradients = { key: '', sky: null, lamp: null };
+function sceneGradients(gy, top) {
+  const key = gy + ' ' + top;
+  if (gradients.key !== key) {
+    gradients.key = key;
+    gradients.sky = ctx.createLinearGradient(0, 0, 0, gy);
+    gradients.sky.addColorStop(0, '#0f1319');
+    gradients.sky.addColorStop(1, '#252b33');
+    gradients.lamp = ctx.createLinearGradient(0, top, 0, gy);
+    gradients.lamp.addColorStop(0, 'rgba(255,236,190,0.10)');
+    gradients.lamp.addColorStop(1, 'rgba(255,236,190,0)');
+  }
+  return gradients;
+}
+
+function drawScene(dtReal) {
+  const { w, h } = fit(canvas, ctx);
+  const narrow = w < 560;
+  const sc = Math.min(h / 3.05, w / (narrow ? 3.5 : 4.6));
+  PX = 1 / sc;
+  const gy = h * (narrow ? 0.83 : 0.8);
+  let ox = w * (narrow ? 0.4 : 0.36);
+  let oy = 0;
+  if (shake > 0 && !REDUCED) {
+    shake -= dtReal;
+    ox += (Math.random() - 0.5) * 10 * shake;
+    oy += (Math.random() - 0.5) * 10 * shake;
+  }
+  const camX = S.x;
+  const toX = (wx) => (wx - camX) * sc + ox;
+  const toY = (wy) => gy - wy * sc + oy;
+  const lampTop = gy - sc * 2.3;
+  const grad = sceneGradients(gy, lampTop);
+
+  ctx.fillStyle = grad.sky;
+  ctx.fillRect(0, 0, w, h);
+
+  // Buildings, then all their windows: neither overlaps another, so two fills draw them all.
+  const far = camX * sc * 0.1;
+  const bw = 64;
+  const first = Math.floor(far / bw) - 1;
+  const last = first + Math.ceil(w / bw) + 3;
+  const height = (id) => 24 + (((((id * 9301 + 49297) % 233280) + 233280) % 233280) / 233280) * 90;
+  ctx.beginPath();
+  for (let id = first; id < last; id++) {
+    const hh = height(id);
+    ctx.rect(id * bw - far, gy - sc * 0.75 - hh, bw - 8, hh + sc * 0.4);
+  }
+  ctx.fillStyle = '#191d23';
+  ctx.fill();
+  ctx.beginPath();
+  for (let id = first; id < last; id++) {
+    const hh = height(id);
+    const bx = id * bw - far;
+    const top = gy - sc * 0.75 - hh;
+    for (let r = 0; r < hh / 14 - 1; r++)
+      for (let c = 0; c < 4; c++)
+        if (((id * 31 + r * 7 + c * 13) & 7) === 0) ctx.rect(bx + 6 + c * 12, top + 8 + r * 14, 5, 6);
+  }
+  ctx.fillStyle = 'rgba(242,193,78,0.16)';
+  ctx.fill();
+
+  const mid = camX * sc * 0.45;
+  const pole = 26 * sc * 0.45;
+  for (let i = -1; i < w / pole + 2; i++) {
+    const id = Math.floor(mid / pole) + i;
+    const px = id * pole - mid;
+    ctx.fillStyle = grad.lamp;
+    ctx.beginPath();
+    ctx.moveTo(px - 4, lampTop + 6);
+    ctx.lineTo(px - sc * 0.9, gy - sc * 0.4);
+    ctx.lineTo(px + sc * 0.9, gy - sc * 0.4);
+    ctx.lineTo(px + 4, lampTop + 6);
+    ctx.fill();
+    ctx.fillStyle = '#2a3038';
+    ctx.fillRect(px - 1.5, lampTop, 3, gy - lampTop - sc * 0.4);
+    ctx.fillStyle = '#ffe8b8';
+    ctx.fillRect(px - 7, lampTop - 2, 14, 4);
+  }
+  const fen = camX * sc * 0.6;
+  const fy = gy - sc * 0.52;
+  ctx.strokeStyle = '#2f353c';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, fy);
+  ctx.lineTo(w, fy);
+  ctx.moveTo(0, fy + sc * 0.2);
+  ctx.lineTo(w, fy + sc * 0.2);
+  for (let i = -1; i < w / 34 + 2; i++) {
+    const px = i * 34 - (fen % 34);
+    ctx.moveTo(px, fy);
+    ctx.lineTo(px, gy - sc * 0.3);
+  }
+  ctx.stroke();
+
+  ctx.fillStyle = '#23272b';
+  ctx.fillRect(0, gy - sc * 0.32 + oy, w, sc * 0.32);
+  const x0 = camX - ox / sc - 1;
+  const x1 = camX + (w - ox) / sc + 1;
+  for (let m = Math.max(0, Math.ceil(x0 / 10) * 10); m < x1; m += 10) {
+    const px = toX(m);
+    const py = toY(0) - sc * 0.2;
+    const cs = sc * 0.2;
+    ctx.fillStyle = (m / 10) % 2 ? '#f0443a' : '#3d8bff';
+    ctx.beginPath();
+    ctx.moveTo(px - cs * 0.32, py);
+    ctx.lineTo(px - cs * 0.07, py - cs);
+    ctx.lineTo(px + cs * 0.07, py - cs);
+    ctx.lineTo(px + cs * 0.32, py);
+    ctx.fill();
+    ctx.fillRect(px - cs * 0.48, py - 2, cs * 0.96, 3);
+    ctx.fillStyle = 'rgba(236,232,221,0.75)';
+    ctx.fillRect(px - cs * 0.2, py - cs * 0.55, cs * 0.4, cs * 0.12);
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(-5, h + 5);
+  for (let px = -5; px <= w + 5; px += 3) ctx.lineTo(px, toY(road.y(camX + (px - ox) / sc)));
+  ctx.lineTo(w + 5, h + 5);
+  ctx.closePath();
+  ctx.fillStyle = '#2b2f34';
+  ctx.fill();
+  ctx.strokeStyle = '#4b5158';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  for (let i = road.first(x0); i < road.bumps.length && road.bumps[i].x <= x1; i++) {
+    const b = road.bumps[i];
+    ctx.fillStyle = b.h > 0 ? 'rgba(160,166,172,0.16)' : 'rgba(0,0,0,0.25)';
+    ctx.fillRect(toX(b.x - 0.25), toY(0) + 1, (b.len + 0.5) * sc, sc * 0.12);
+  }
+  ctx.beginPath();
+  for (let m = Math.floor(x0 * 2) / 2; m < x1; m += 0.5) {
+    const s1 = Math.abs(Math.sin(m * 127.1) * 43758.5453) % 1;
+    const s2 = Math.abs(Math.sin(m * 311.7) * 12543.1) % 1;
+    ctx.rect(toX(m + s1 * 0.5), toY(0) + 4 + s2 * (h - gy - 8), 2, 2);
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.035)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(236,232,221,0.33)';
+  ctx.lineWidth = Math.max(2, sc * 0.03);
+  ctx.beginPath();
+  for (let m = Math.floor(x0 / 4) * 4; m < x1; m += 4) {
+    ctx.moveTo(toX(m), gy + sc * 0.17 + oy);
+    ctx.lineTo(toX(m + 2), gy + sc * 0.17 + oy);
+  }
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(236,232,221,0.42)';
+  ctx.font = `700 ${Math.round(sc * 0.13)}px ${FONT_MONO}`;
+  for (let m = Math.max(50, Math.ceil(x0 / 50) * 50); m < x1; m += 50)
+    ctx.fillText(m + ' m', toX(m), gy + sc * 0.38 + oy);
+  if (x0 < 1) {
+    ctx.fillStyle = 'rgba(236,232,221,0.75)';
+    ctx.fillRect(toX(0) - 2, gy + oy, 4, sc * 0.3);
+  }
+
+  // Where the record falls: the distance still missing, counted from here.
+  const rec = best[bestKey()];
+  if (rec && S.lifted && phase === 'ride' && S.wDist < rec) {
+    const rx = toX(S.x + rec - S.wDist);
+    const top = Math.max(gy - sc * 1.9 + oy, 24 + 140 * clamp(w / 900, 0.72, 1.2));
+    if (rx > -20 && rx < w + 20 && top < gy + oy) {
+      ctx.strokeStyle = COL.ok;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(rx, gy + oy + sc * 0.3);
+      ctx.lineTo(rx, top);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = COL.ok;
+      ctx.font = `600 ${Math.max(11, Math.round(sc * 0.11))}px ${FONT_MONO}`;
+      ctx.fillText(i18n`rekord`, rx, top - 6);
+    }
+  }
+
+  const ground = toY(road.y(S.x));
+  const lift = phase === 'over' && crash ? tailLift(bike, S.th) : 0;
+  const zA = road.y(S.x) + bike.rr + lift;
+  const axX = toX(S.x),
+    axY = toY(zA);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.beginPath();
+  ctx.ellipse(
+    toX(S.x + bike.L * 0.5 * Math.cos(S.th)),
+    ground + 2,
+    sc * bike.L * 0.62 * Math.max(0.45, Math.cos(S.th)),
+    sc * 0.04,
+    0,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+
+  ctx.save();
+  ctx.translate(axX, axY);
+  ctx.scale(sc, -sc);
+  ctx.rotate(S.th);
+  ctx.translate(0, -bike.rr);
+  drawBike(ctx, bike, S, S.ra, S.fa);
+  ctx.restore();
+
+  drawParts(toX, toY, sc, phase === 'ride' ? S.v : crash ? crash.v : 0);
+
+  const bp = balancePoint(bike, S.s);
+  if (cfg.cog) {
+    const b = cogB(bike, S.s);
+    const hc = bike.h - bike.rr;
+    const gx = toX(S.x + b * Math.cos(S.th) - hc * Math.sin(S.th));
+    const gyy = toY(zA + b * Math.sin(S.th) + hc * Math.cos(S.th));
+    const inZone = Math.abs(S.th - bp) <= 3 * RAD;
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = alpha(COL.chalk, 0.55);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(gx, gyy);
+    ctx.lineTo(gx, ground);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = inZone ? COL.ok : alpha(COL.ok, 0.45);
+    ctx.lineWidth = inZone ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.moveTo(axX, ground);
+    ctx.lineTo(axX, ground - sc * 1.25);
+    ctx.stroke();
+    const rr = Math.max(5, sc * 0.05);
+    disc(ctx, [gx, gyy], rr, COL.chalk);
+    ctx.fillStyle = COL.asphalt;
+    ctx.beginPath();
+    ctx.moveTo(gx, gyy);
+    ctx.arc(gx, gyy, rr, 0, Math.PI / 2);
+    ctx.lineTo(gx, gyy);
+    ctx.arc(gx, gyy, rr, Math.PI, Math.PI * 1.5);
+    ctx.fill();
+  }
+
+  if (flash > 0) {
+    ctx.fillStyle = `rgba(239,83,80,${0.35 * flash})`;
+    ctx.fillRect(0, 0, w, h);
+    flash = Math.max(0, flash - dtReal * 2.5);
+  }
+  drawHud(w, h, bp, narrow);
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// Heads-up display over the scene: distance, angle gauge with the balance point, control bars.
+
+function panel(x, y, w, h) {
+  ctx.fillStyle = alpha(COL.asphalt, 0.74);
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, 6);
+  else ctx.rect(x, y, w, h);
+  ctx.fill();
+}
+
+function drawHud(w, h, bp, narrow) {
+  const u = clamp(w / 900, 0.72, 1.2);
+  const mono = (s, wgt = 500) => `${wgt} ${s * u}px ${FONT_MONO}`;
+  const disp = (s) => `700 ${s * u}px ${FONT_DISPLAY}`;
+  const inZone = S.air && Math.abs(S.th - bp) <= 3 * RAD;
+  const zoneCol = inZone ? '#6ee08e' : COL.ok;
+  const counting = S.lifted || phase === 'over';
+
+  panel(10, 10, 178 * u, 96 * u);
+  ctx.textAlign = 'left';
+  ctx.font = mono(10.5);
+  const scraping = phase === 'ride' && S.scrape;
+  ctx.fillStyle = scraping ? '#ffb74d' : COL.muted;
+  ctx.fillText(
+    scraping ? i18n`OGON TRZE · DYSTANS STOI` : counting ? i18n`NA TYLNYM KOLE` : i18n`PODERWIJ PONAD ${LIFT_DEG}°`,
+    20 * u,
+    27 * u,
+  );
+  ctx.fillStyle = counting ? COL.chalk : COL.dim;
+  ctx.font = disp(32);
+  ctx.fillText(fmt(S.wDist) + ' m', 20 * u, 59 * u);
+  ctx.font = mono(11.5);
+  ctx.fillStyle = COL.muted;
+  const zp = S.wTime > 0 ? Math.round((100 * S.bpTime) / S.wTime) : 0;
+  ctx.fillText(i18n`${Math.round(S.v * 3.6)} km/h · strefa BP ${zp}%`, 20 * u, 78 * u);
+  const rec = best[bestKey()];
+  ctx.fillText(`${rec ? i18n`rekord ${fmt(rec)} m` : i18n`bez rekordu`} · ${pct(cfg.tempo)}`, 20 * u, 95 * u);
+
+  const R = (narrow ? 62 : 74) * u;
+  const pad = 14 * u;
+  const bx = w - R - 2 * pad - 10;
+  panel(bx, 10, R + 2 * pad, R + 2 * pad + 26 * u);
+  const cx = bx + pad,
+    cy = 10 + pad + R;
+  const onArc = (a, r) => [cx + Math.cos(a) * r, cy - Math.sin(a) * r];
+  const arc = (a0, a1, col, lw) => {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, -Math.min(a1, Math.PI / 2), -Math.max(0, a0));
+    ctx.stroke();
+  };
+  const tick = (a, r0, r1) => {
+    ctx.moveTo(...onArc(a, r0));
+    ctx.lineTo(...onArc(a, r1));
+  };
+  ctx.lineCap = 'butt';
+  arc(0, Math.PI / 2, COL.rule, 9 * u);
+  arc(bp - 7 * RAD, bp + 7 * RAD, alpha(COL.warn, 0.75), 9 * u);
+  arc(bp - 3 * RAD, bp + 3 * RAD, zoneCol, (inZone ? 13 : 9) * u);
+  arc(prep(bike).tail, Math.PI / 2, 'rgba(239,83,80,0.85)', 9 * u);
+  if (!S.lifted && phase !== 'over') {
+    ctx.strokeStyle = alpha(COL.chalk, 0.8);
+    ctx.lineWidth = 2 * u;
+    ctx.beginPath();
+    tick(LIFT_DEG * RAD, R - 8 * u, R + 8 * u);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = COL.dim;
+  ctx.lineWidth = 1;
+  ctx.fillStyle = COL.dim;
+  ctx.font = mono(9);
+  ctx.textAlign = 'center';
+  ctx.beginPath();
+  for (let d = 0; d <= 90; d += 15) {
+    tick(d * RAD, R - 8 * u, R - 13 * u);
+    if (d % 30 === 0) {
+      const [lx, ly] = onArc(d * RAD, R - 22 * u);
+      ctx.fillText(String(d), lx, ly + 3 * u);
+    }
+  }
+  ctx.stroke();
+  if (cfg.trend && S.air) {
+    const [tx, ty] = onArc(clamp(S.th + S.om * 0.25, 0, Math.PI / 2), R);
+    ctx.strokeStyle = COL.chalk;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(tx, ty, 5 * u, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = COL.chalk;
+  ctx.lineWidth = 3 * u;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  tick(S.th, 0, R + 6 * u);
+  ctx.stroke();
+  disc(ctx, [cx, cy], 4 * u, COL.chalk);
+  ctx.textAlign = 'left';
+  ctx.font = disp(22);
+  ctx.fillStyle = COL.chalk;
+  ctx.fillText(fmt(deg(S.th), 0) + '°', cx, cy + 24 * u);
+  ctx.textAlign = 'right';
+  ctx.font = mono(11, 600);
+  ctx.fillStyle = zoneCol;
+  ctx.fillText('BP ' + Math.round(deg(bp)) + '°', cx + R + 4 * u, cy + 22 * u);
+
+  const bw = 92 * u,
+    lab = 62 * u,
+    rowH = 17 * u;
+  const pw = lab + bw + 22 * u,
+    ph = rowH * 3 + 12 * u;
+  const lx = LANDPADS.matches && padsEl.classList.contains('on') ? (w - pw) / 2 : 10;
+  const py = h - ph - 10;
+  panel(lx, py, pw, ph);
+  const bar = (i, val, col, text) => {
+    const y = py + 8 * u + i * rowH;
+    ctx.fillStyle = COL.muted;
+    ctx.font = mono(10);
+    ctx.textAlign = 'left';
+    ctx.fillText(text, lx + 10 * u, y + 9 * u);
+    ctx.fillStyle = COL.rule;
+    ctx.fillRect(lx + lab + 10 * u, y + 2 * u, bw, 8 * u);
+    ctx.fillStyle = col;
+    if (val === null) {
+      ctx.fillRect(lx + lab + 10 * u + bw / 2 - 1, y, 2, 12 * u);
+      ctx.fillStyle = COL.spd;
+      ctx.fillRect(lx + lab + 10 * u + bw / 2 + (S.s * bw) / 2 - 4 * u, y - 1 * u, 8 * u, 14 * u);
+    } else ctx.fillRect(lx + lab + 10 * u, y + 2 * u, bw * val, 8 * u);
+  };
+  bar(0, S.thrCmd, COL.gas, i18n`GAZ`);
+  bar(1, S.brk, COL.rear, i18n`HAMULEC`);
+  bar(2, null, COL.dim, i18n`CIAŁO`);
+
+  if (paused && phase === 'ride') {
+    ctx.fillStyle = 'rgba(12,14,16,0.6)';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = COL.chalk;
+    ctx.textAlign = 'center';
+    ctx.font = disp(30);
+    ctx.fillText(i18n`Pauza`, w / 2, h / 2);
+    ctx.font = mono(13);
+    ctx.fillText(COARSE.matches ? i18n`dotknij przycisku, aby jechać dalej` : i18n`P: dalej`, w / 2, h / 2 + 26 * u);
+  }
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The last 12 seconds: bike angle against the balance point, throttle, brake and body position.
+
+const teleCanvas = $('tele');
+const tctx = teleCanvas.getContext('2d');
+const TELE_SPAN = 12;
+
+function recordTrace() {
+  trace.push({ t: S.t, th: deg(S.th), bp: deg(balancePoint(bike, S.s)), thr: S.thrCmd, brk: S.brk, body: S.s });
+  while (trace.length && trace[0].t < S.t - TELE_SPAN - 0.5) trace.shift();
+  teleDirty = true;
+}
+
+function drawTele() {
+  const { w, h } = fit(teleCanvas, tctx);
+  tctx.clearRect(0, 0, w, h);
+  const tEnd = Math.max(TELE_SPAN, S.t);
+  const tx = (t) => ((t - (tEnd - TELE_SPAN)) / TELE_SPAN) * w;
+  const top = 12,
+    bot = h - 4;
+  const ty = (d) => bot - (d / 90) * (bot - top);
+  tctx.lineWidth = 1;
+  tctx.font = `10px ${FONT_MONO}`;
+  tctx.textAlign = 'left';
+  tctx.strokeStyle = alpha(COL.rule, 0.7);
+  tctx.fillStyle = COL.dim;
+  tctx.beginPath();
+  for (let d = 0; d <= 90; d += 30) {
+    tctx.moveTo(0, ty(d));
+    tctx.lineTo(w, ty(d));
+    if (d) tctx.fillText(d + '°', 3, ty(d) - 3);
+  }
+  tctx.stroke();
+  if (trace.length < 2) return;
+  const band = (key, col) => {
+    tctx.fillStyle = col;
+    tctx.beginPath();
+    tctx.moveTo(tx(trace[0].t), bot);
+    for (const p of trace) tctx.lineTo(tx(p.t), bot - p[key] * (bot - top) * 0.35);
+    tctx.lineTo(tx(trace[trace.length - 1].t), bot);
+    tctx.fill();
+  };
+  band('thr', alpha(COL.gas, 0.3));
+  band('brk', alpha(COL.rear, 0.35));
+  tctx.fillStyle = alpha(COL.ok, 0.16);
+  tctx.beginPath();
+  trace.forEach((p, i) => (i ? tctx.lineTo(tx(p.t), ty(p.bp + 3)) : tctx.moveTo(tx(p.t), ty(p.bp + 3))));
+  for (let i = trace.length - 1; i >= 0; i--) tctx.lineTo(tx(trace[i].t), ty(trace[i].bp - 3));
+  tctx.fill();
+  const plot = (f, col, lw, dash) => {
+    tctx.strokeStyle = col;
+    tctx.lineWidth = lw;
+    tctx.setLineDash(dash || []);
+    tctx.beginPath();
+    trace.forEach((p, i) => (i ? tctx.lineTo(tx(p.t), f(p)) : tctx.moveTo(tx(p.t), f(p))));
+    tctx.stroke();
+    tctx.setLineDash([]);
+  };
+  plot((p) => ty(p.bp), COL.ok, 1.2, [4, 4]);
+  plot((p) => (top + bot) / 2 - p.body * (bot - top) * 0.14, alpha(COL.spd, 0.85), 1.2);
+  plot((p) => ty(p.th), COL.chalk, 2);
+}
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The balance point diagram under the game, with the body position slider.
+
+const demoCanvas = $('bpc');
+const demoCtx = demoCanvas.getContext('2d');
+
+function drawBpDemo() {
+  const g = demoCtx;
+  const { w, h } = fit(demoCanvas, g);
+  g.clearRect(0, 0, w, h);
+  const body = Number($('bpr').value);
+  const bp = balancePoint(bike, body);
+  const b = cogB(bike, body);
+  const hc = bike.h - bike.rr;
+  $('bpv').textContent = `BP ${Math.round(deg(bp))}° · b ${Math.round(b * 100)} cm · h − r ${Math.round(hc * 100)} cm`;
+  const sc = Math.min(h / 2.05, w / 2.4);
+  PX = 1 / sc;
+  const gx = w * 0.4,
+    gy = h - 12;
+  g.strokeStyle = '#4b5158';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(0, gy);
+  g.lineTo(w, gy);
+  g.stroke();
+  const ax = gx,
+    ay = gy - bike.rr * sc;
+  g.save();
+  g.translate(ax, ay);
+  g.scale(sc, -sc);
+  g.rotate(bp);
+  g.translate(0, -bike.rr);
+  drawBike(g, bike, { fork: 1, s: body, th: bp }, 0, 0);
+  g.restore();
+  const cx = ax + (b * Math.cos(bp) - hc * Math.sin(bp)) * sc;
+  const cy = ay - (b * Math.sin(bp) + hc * Math.cos(bp)) * sc;
+  g.setLineDash([5, 5]);
+  g.strokeStyle = COL.ok;
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.moveTo(cx, cy);
+  g.lineTo(gx, gy);
+  g.stroke();
+  g.setLineDash([]);
+  disc(g, [ax, ay], 3, COL.chalk);
+  disc(g, [cx, cy], 6, COL.chalk);
+  g.fillStyle = COL.ok;
+  g.font = `600 12px ${FONT_MONO}`;
+  g.textAlign = 'left';
+  g.fillText(Math.round(deg(bp)) + '°', ax + 34, ay - 6);
+  g.strokeStyle = COL.ok;
+  g.beginPath();
+  g.arc(ax, ay, 28, -bp, 0);
+  g.stroke();
+  g.strokeStyle = alpha(COL.chalk, 0.35);
+  g.beginPath();
+  g.moveTo(ax, ay);
+  g.lineTo(ax + 40, ay);
+  g.stroke();
+}
+$('bpr').addEventListener('input', drawBpDemo);
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Maciej Kasprzyk
+//
+// The run loop and start-up. Physics advances in fixed steps of DT, scaled by the tempo; the scene
+// is drawn only while something moves or after invalidate().
+
+const CRASH_TILT = 1.9; // the bike rolls over the tail up to this pitch after a loop-out [rad]
+let last = performance.now();
+let acc = 0;
+
+function rollOver(dt) {
+  if (S.th < CRASH_TILT) {
+    S.th = Math.min(CRASH_TILT, S.th + crash.om * dt);
+    crash.om = Math.max(0.6, crash.om * (1 - 2 * dt));
+  }
+  S.x += crash.v * dt;
+  S.ra += (crash.v / bike.rr) * dt;
+  crash.v = Math.max(0, crash.v - 6 * dt);
+  if (crash.v > 0.5) {
+    const [tx, ty] = tailPoint(bike);
+    spawn('spark', S.x + tx * Math.cos(S.th) - (ty - bike.rr) * Math.sin(S.th), road.y(S.x), 2);
+  }
+}
+
+function frame(now) {
+  const dtReal = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  const dtGame = dtReal * cfg.tempo;
+  const riding = phase === 'ride' && !paused;
+  if (riding) {
+    acc += dtGame;
+    const inp = controls();
+    while (acc >= DT && phase === 'ride') {
+      acc -= DT;
+      step(S, bike, road, inp);
+      traceT += DT;
+      if (traceT >= 1 / 30) {
+        traceT = 0;
+        recordTrace();
+      }
+      if (S.done) finish();
+    }
+    if (S.slip > 0 && Math.random() < S.slip * 0.6) spawn('smoke', S.x - 0.05, road.y(S.x), 1);
+    if (S.scrape && S.v > 0.5 && Math.random() < 0.9) spawn('spark', S.x + S.tailX, road.y(S.x), 2);
+  } else {
+    acc = 0;
+    if (phase === 'over' && crash) rollOver(dtGame);
+  }
+  if (!paused) stepParts(dtGame);
+  sound.update(S, riding);
+  const crashing = crash && (crash.v > 0 || S.th < CRASH_TILT);
+  if (riding || crashing || flash > 0 || shake > 0 || (!paused && parts.length) || sceneDirty) {
+    sceneDirty = false;
+    drawScene(dtReal);
+  }
+  if (teleDirty) {
+    teleDirty = false;
+    drawTele();
+  }
+  requestAnimationFrame(frame);
+}
+
+if (document.fonts) {
+  const redraw = () => {
+    invalidate();
+    drawBpDemo();
+  };
+  document.fonts.ready.then(redraw);
+  document.fonts.addEventListener('loadingdone', redraw);
+}
+bikeInfo();
+showReady();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

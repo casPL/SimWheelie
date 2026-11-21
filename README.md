@@ -8,8 +8,12 @@ with the same data as [SimGP8](https://github.com/casPL/SimGP8).
 
 ## Playing
 
-The game is a single HTML file and needs nothing but a browser. Download
-[dist/simwheelie.html](dist/simwheelie.html) and open it. The interface is in Polish.
+The game is a single HTML file and needs nothing but a browser. Download one of these and open it:
+
+- [dist/simwheelie-en.html](dist/simwheelie-en.html), English
+- [dist/simwheelie-pl.html](dist/simwheelie-pl.html), Polish
+
+How to play:
 
 - <kbd>↑</kbd> or <kbd>W</kbd>: throttle. <kbd>↓</kbd> or <kbd>S</kbd>: rear brake. <kbd>←</kbd> <kbd>→</kbd>
   or <kbd>A</kbd> <kbd>D</kbd>: body back and forward on the seat. <kbd>Space</kbd> starts an attempt,
@@ -19,8 +23,8 @@ The game is a single HTML file and needs nothing but a browser. Download
 - Tail scrapes are allowed, but the distance stops while the tail is on the asphalt. The attempt ends when
   the front wheel touches down, when the bike goes over the tail, or when it sits on the tail with no speed
   left.
-- Tempo 50% or 35% slows the clock down and leaves the physics as it is. Records are kept for each bike and
-  tempo.
+- Game speed 50% or 35% slows the clock down and leaves the physics as it is. Records are kept for each bike
+  and game speed.
 
 The fonts come from Google Fonts; offline, the browser falls back to its own.
 
@@ -46,8 +50,8 @@ The fonts come from Google Fonts; offline, the browser falls back to its own.
 Node.js 18 or newer, no dependencies:
 
 ```sh
-node build.js     # writes dist/simwheelie.html
-npm test          # what the physics promises, and recorded rides
+node build.js     # writes dist/simwheelie-pl.html and dist/simwheelie-en.html
+npm test          # what the physics promises, recorded rides and translation checks
 npm run format    # Prettier, the only development dependency
 ```
 
@@ -56,12 +60,22 @@ npm run format    # Prettier, the only development dependency
 ```text
 src/js/           the game; build.js joins the files in order, and they share one scope
   core … physics    the physics, which also runs without a browser (see test/)
-  app … main        the interface
-src/page.html     the markup
+  i18n … main       the interface
+src/page.*.html   the markup of each edition
 src/style.css     styles
 src/shell.html    the document the build fills in
+src/en.json       the English dictionary
 test/             tests, with the recorded rides
 ```
+
+## Translations
+
+Polish is the source language. Interface strings stay in the code as templates tagged with
+`i18n`, and every other edition has a dictionary that maps each Polish template (with `{}` for each
+placeholder) to its translation. To add a language, copy `src/en.json` to `src/<lang>.json` and
+translate the values, translate `src/page.en.html` into `src/page.<lang>.html`, and add the edition
+to `EDITIONS` in `build.js`. The build stops with a list of missing or unused entries, and the tests
+check that every page has the same markup.
 
 ## Licence
 
@@ -79,8 +93,8 @@ SimWheelie to trening jazdy na tylnym kole w przeglądarce. Trzeba utrzymać mot
 pointu, a wynikiem jest dystans przejechany na tylnym kole. Pięć motocykli, od pitbike'a 12" po GSX-R 1000,
 z tymi samymi danymi co w [SimGP8](https://github.com/casPL/SimGP8).
 
-Gra to jeden plik HTML, wystarczy przeglądarka: pobierz [dist/simwheelie.html](dist/simwheelie.html)
-i otwórz go. Sterowanie: <kbd>↑</kbd> gaz, <kbd>↓</kbd> tylny hamulec, <kbd>←</kbd> <kbd>→</kbd> ciało do
+Gra to jeden plik HTML, wystarczy przeglądarka: pobierz [dist/simwheelie-pl.html](dist/simwheelie-pl.html)
+(albo angielski [dist/simwheelie-en.html](dist/simwheelie-en.html)) i otwórz go. Sterowanie: <kbd>↑</kbd> gaz, <kbd>↓</kbd> tylny hamulec, <kbd>←</kbd> <kbd>→</kbd> ciało do
 tyłu i do przodu, <kbd>Spacja</kbd> start, <kbd>P</kbd> pauza. Na telefonie przyciski są na ekranie.
 
 Model obejmuje obrót motocykla wokół osi tylnego koła z bezwładnością silnika i koła, balance point zależny
@@ -89,7 +103,9 @@ od pozycji ciała na siedzeniu, moc silnika i przyczepność tylnej opony, tylny
 z tarciem, przewrotkę przez ogon zależną od energii przy pierwszym dotknięciu, nierówną nawierzchnię
 i telemetrię z ostatnich 12 sekund.
 
-Budowanie: `node build.js` (Node.js 18 lub nowszy, bez zależności), testy: `npm test`.
+Budowanie: `node build.js` (Node.js 18 lub nowszy, bez zależności), testy: `npm test`. Teksty
+interfejsu są w kodzie po polsku jako szablony `i18n`, a słownik `src/en.json` tłumaczy je na
+angielski; nowy język dodaje się tak, jak opisano w sekcji Translations.
 
 Licencja: GNU GPL w wersji 3 lub nowszej (plik [LICENSE](LICENSE)). Autor: Maciej Kasprzyk,
 Instagram [@cas8pl](https://www.instagram.com/cas8pl/).

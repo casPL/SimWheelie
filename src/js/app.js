@@ -5,7 +5,7 @@
 
 const $ = (id) => document.getElementById(id);
 const deg = (r) => (r * 180) / Math.PI;
-const fmt = (n, d = 1) => n.toFixed(d).replace('.', ',').replace('-', '−');
+const fmt = (n, d = 1) => n.toFixed(d).replace('.', DECIMAL).replace('-', '−');
 const pct = (t) => Math.round(t * 100) + '%';
 const store = {
   get(k, def) {
@@ -76,14 +76,22 @@ function invalidate() {
   teleDirty = true;
 }
 
-// On secpro.pl both games live under the same key, /simwheelie/<key>/ and /simgp8/<key>/.
+// On secpro.pl both games live under the same key, /simwheelie/<key>/ and /simgp8/<key>/, with the
+// English editions in en/ below them. Elsewhere the other language is the file next to this one, as
+// in dist/; where there is none, the language link is hidden.
 const secpro = /^(.*)\/simwheelie\/([0-9a-f]{32})\//i.exec(location.pathname);
-if (secpro)
+if (secpro) {
+  const [, root, key] = secpro;
+  const en = (yes) => (yes ? 'en/' : '');
   document.querySelectorAll('a[data-sibling]').forEach((a) => {
-    a.href = `${secpro[1]}/simgp8/${secpro[2]}/`;
+    a.href = `${root}/simgp8/${key}/${en(LANG === 'en')}`;
     a.removeAttribute('target');
     a.removeAttribute('rel');
   });
+  document.querySelectorAll('a[data-lang]').forEach((a) => (a.href = `${root}/simwheelie/${key}/${en(LANG !== 'en')}`));
+} else if (!/\/simwheelie-(pl|en)\.html$/.test(location.pathname)) {
+  document.querySelectorAll('a[data-lang]').forEach((a) => (a.hidden = true));
+}
 
 function segmented(el, val, onPick) {
   el.querySelectorAll('button').forEach((b) => {
