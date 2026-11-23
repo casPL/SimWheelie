@@ -156,7 +156,7 @@ footer p { margin: 0 0 4px; }
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand"><h1>SimWheelie</h1><span class="sub">trening balance pointu</span><a class="sib" data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: symulator przejazdu GP8 w motogymkhanie">SimGP8 →</a><a class="sib" data-lang href="simwheelie-en.html" hreflang="en" title="English">EN</a></div>
+    <div class="brand"><h1>SimWheelie</h1><span class="sub">trening balance pointu</span><a class="sib" data-sibling="simgp8" href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener" title="SimGP8: symulator przejazdu GP8 w motogymkhanie">SimGP8 →</a><a class="sib" data-sibling="simtrackstand" href="https://github.com/casPL/SimTrackstand" target="_blank" rel="noopener" title="SimTrackstand: trening trackstandu, czyli balansu w miejscu">SimTrackstand →</a><a class="sib" data-lang href="simwheelie-en.html" hreflang="en" title="English">EN</a></div>
     <div class="hset">
       <div class="hg"><span class="k">Motocykl</span><div class="seg" id="bikes" role="group" aria-label="Motocykl"></div></div>
       <div class="hg"><span class="k">Tempo</span><div class="seg" id="tempo" role="group" aria-label="Tempo"><button data-v="1">100%</button><button data-v="0.75">75%</button><button data-v="0.5">50%</button><button data-v="0.35">35%</button></div></div>
@@ -237,7 +237,7 @@ footer p { margin: 0 0 4px; }
   <footer>
     <p>SimWheelie © 2026 Maciej Kasprzyk · Instagram <a href="https://www.instagram.com/cas8pl/" target="_blank" rel="noopener">@cas8pl</a></p>
     <p>Wolne oprogramowanie na licencji <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU GPL</a> w wersji 3 lub nowszej. Bez żadnej gwarancji. Kod źródłowy: <a href="https://github.com/casPL/SimWheelie" target="_blank" rel="noopener">github.com/casPL/SimWheelie</a>.</p>
-    <p>Zobacz też <a data-sibling href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener">SimGP8: symulator przejazdu GP8 w motogymkhanie</a>. Dane motocykli i wygląd pochodzą właśnie stamtąd.</p>
+    <p>Zobacz też <a data-sibling="simgp8" href="https://github.com/casPL/SimGP8" target="_blank" rel="noopener">SimGP8: symulator przejazdu GP8 w motogymkhanie</a>. Dane motocykli i wygląd pochodzą właśnie stamtąd. Balans w miejscu ćwiczy <a data-sibling="simtrackstand" href="https://github.com/casPL/SimTrackstand" target="_blank" rel="noopener">SimTrackstand</a>.</p>
   </footer>
 </div>
 <script>
@@ -748,15 +748,15 @@ function invalidate() {
   teleDirty = true;
 }
 
-// On secpro.pl both games live under the same key, /simwheelie/<key>/ and /simgp8/<key>/, with the
-// English editions in en/ below them. Elsewhere the other language is the file next to this one, as
-// in dist/; where there is none, the language link is hidden.
+// On secpro.pl the games live under the same key, /simwheelie/<key>/, /simgp8/<key>/ and
+// /simtrackstand/<key>/, with the English editions in en/ below them. Elsewhere the other language is
+// the file next to this one, as in dist/; where there is none, the language link is hidden.
 const secpro = /^(.*)\/simwheelie\/([0-9a-f]{32})\//i.exec(location.pathname);
 if (secpro) {
   const [, root, key] = secpro;
   const en = (yes) => (yes ? 'en/' : '');
   document.querySelectorAll('a[data-sibling]').forEach((a) => {
-    a.href = `${root}/simgp8/${key}/${en(LANG === 'en')}`;
+    a.href = `${root}/${a.dataset.sibling}/${key}/${en(LANG === 'en')}`;
     a.removeAttribute('target');
     a.removeAttribute('rel');
   });

@@ -76,15 +76,15 @@ function invalidate() {
   teleDirty = true;
 }
 
-// On secpro.pl both games live under the same key, /simwheelie/<key>/ and /simgp8/<key>/, with the
-// English editions in en/ below them. Elsewhere the other language is the file next to this one, as
-// in dist/; where there is none, the language link is hidden.
+// On secpro.pl the games live under the same key, /simwheelie/<key>/, /simgp8/<key>/ and
+// /simtrackstand/<key>/, with the English editions in en/ below them. Elsewhere the other language is
+// the file next to this one, as in dist/; where there is none, the language link is hidden.
 const secpro = /^(.*)\/simwheelie\/([0-9a-f]{32})\//i.exec(location.pathname);
 if (secpro) {
   const [, root, key] = secpro;
   const en = (yes) => (yes ? 'en/' : '');
   document.querySelectorAll('a[data-sibling]').forEach((a) => {
-    a.href = `${root}/simgp8/${key}/${en(LANG === 'en')}`;
+    a.href = `${root}/${a.dataset.sibling}/${key}/${en(LANG === 'en')}`;
     a.removeAttribute('target');
     a.removeAttribute('rel');
   });
